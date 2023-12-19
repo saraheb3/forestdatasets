@@ -1,0 +1,583 @@
+//Global Forest Cover and Forest Cover Change Datasets
+//Code: Compares estimates of forest cover change between Hansen and Vancutsem change datasets within IUCN Red List Species Range; Generates Figure 6 and Supplemental 
+//Citation: [cite]
+//Author: Sarah Castle
+
+//Import Vancutsem maps from separate script
+var Vancutsem1 = ee.Image("users/saraheb3/Vancutsem_forestchanges_2015_to_2016"),
+    Vancutsem2 = ee.Image("users/saraheb3/Vancutsem_forestchanges_2016_to_2017"),
+    Vancutsem3 = ee.Image("users/saraheb3/Vancutsem_forestchanges_2017_to_2018"),
+    Vancutsem4 = ee.Image("users/saraheb3/Vancutsem_forestchanges_2018_to_2019"),
+    Vancutsem5 = ee.Image("users/saraheb3/Vancutsem_forestchanges_2019_to_2020"),
+    Vancutsem6 = ee.Image("users/saraheb3/Vancutsem_forestchanges_2020_to_2021");
+
+var vancutsem = ee.ImageCollection.fromImages([Vancutsem1, Vancutsem2, Vancutsem3, Vancutsem4, Vancutsem5, Vancutsem6]);
+
+//Users will need to download the species range for the species of interest from IUCN Red List and import into GEE. 
+//Change the following line to import the user-imported species range.
+var habitat = ee.FeatureCollection("users/saraheb3/WhiteCheekedSpiderMonkey");
+var geom = habitat.geometry();
+print(geom);
+    
+/***** End of imports. If edited, may not auto-convert in the playground. *****/
+var habitatmask = habitat.reduceToImage({properties: ['PRESENCE'], reducer: ee.Reducer.mode()});
+Map.addLayer(habitatmask,{},'species');
+print(habitatmask);
+
+var pixelArea = ee.Image.pixelArea();
+
+//var year1 = 15;
+var year2 = 16;
+var year3 = 17;
+var year4 = 18;
+var year5 = 19;
+var year6 = 20;
+var year7 = 21;
+//var year8 = 22;
+
+
+var hansen = ee.Image('UMD/hansen/global_forest_change_2021_v1_9').select('lossyear');
+var treeLossVisParam = {
+  //bands: ['lossyear'],
+  min: 0,
+  max: 22,
+  palette: ['yellow', 'red']
+};
+var hansenloss = hansen.selfMask();
+//Map.addLayer(hansenloss, treeLossVisParam, 'tree loss year');
+
+hansen = hansen.mask(habitatmask);
+
+//var hforestloss1 = hansen.eq(year1);
+//Map.addLayer(hforestloss1.selfMask(),{palette:['#228B22']},'forestloss1');
+
+var hforestloss2 = hansen.eq(year2);
+//Map.addLayer(hforestloss2.selfMask(),{palette:['#228B22']},'forestloss2');
+
+var hforestloss3 = hansen.eq(year3);
+//Map.addLayer(hforestloss3.selfMask(),{palette:['#228B22']},'forestloss3');
+
+var hforestloss4 = hansen.eq(year4);
+//Map.addLayer(hforestloss4.selfMask(),{palette:['#228B22']},'forestloss4');
+
+var hforestloss5 = hansen.eq(year5);
+//Map.addLayer(hforestloss5.selfMask(),{palette:['#228B22']},'forestloss5');
+
+var hforestloss6 = hansen.eq(year6);
+//Map.addLayer(hforestloss6.selfMask(),{palette:['#228B22']},'forestloss6');
+
+var hforestloss7 = hansen.eq(year7);
+//Map.addLayer(hforestloss7.selfMask(),{palette:['#228B22']},'forestloss7');
+
+//var hforestloss8 = hansen.eq(year8);
+//Map.addLayer(hforestloss8.selfMask(),{palette:['#228B22']},'forestloss8');
+var hansenloss = ee.ImageCollection.fromImages([hforestloss2.selfMask(),hforestloss3.selfMask(),hforestloss4.selfMask(), hforestloss5.selfMask(), hforestloss6.selfMask(), hforestloss7.selfMask()]);
+var BandVis6 = {
+  min: 1,
+  max: 7,
+  palette: ['#8B0000','#FF0000','#FF8C00', '#FFFF00','#32CD32','#006400']
+};
+//Map.addLayer(hansenloss, BandVis6,'hansenloss');
+
+var hforestloss16 = ee.Image.constant(16).mask(hforestloss2.selfMask()).cast({'constant': ee.PixelType('int', 0, 21)});
+var hforestloss17 = ee.Image.constant(17).mask(hforestloss3.selfMask()).cast({'constant': ee.PixelType('int', 0, 21)});
+var hforestloss18 = ee.Image.constant(18).mask(hforestloss4.selfMask()).cast({'constant': ee.PixelType('int', 0, 21)});
+var hforestloss19 = ee.Image.constant(19).mask(hforestloss5.selfMask()).cast({'constant': ee.PixelType('int', 0, 21)});
+var hforestloss20 = ee.Image.constant(20).mask(hforestloss6.selfMask()).cast({'constant': ee.PixelType('int', 0, 21)});
+var hforestloss21 = ee.Image.constant(21).mask(hforestloss7.selfMask()).cast({'constant': ee.PixelType('int', 0, 21)});
+var hansenloss1 = ee.ImageCollection.fromImages([hforestloss16,hforestloss17,hforestloss18, hforestloss19, hforestloss20, hforestloss21]);
+//var vancutsemloss = ee.ImageCollection.fromImages([ee.Image.constant(vforestloss16.select('Dec2015'), vforestloss17.select('Dec2016'), vforestloss18.select('Dec2017'), vforestloss19.select('Dec2018'), vforestloss20.select('Dec2019'), vforestloss21.select('Dec2020')]);
+//print("vancutsemloss:", vancutsemloss);
+//print("vancutsemloss15:", vancutsemloss.filter());
+//Map.addLayer(vforestloss16, {},'vancutsemloss16');
+var BandVis6 = {
+  min: 16,
+  max: 21,
+  palette: ['#8B0000','#FF0000','#FF8C00', '#FFFF00','#32CD32','#006400']
+};
+Map.addLayer(hansenloss1, BandVis6,'hansenloss1');
+
+Export.image.toDrive({
+  image: hansenloss1,
+  description:'hansenloss_img_SpiderMonkey',
+  folder: "GEE_Folder",
+  scale:30,
+  maxPixels:1e13,
+  region: geom,
+  skipEmptyTiles:true,
+  fileFormat: 'GeoTIFF'
+});
+
+
+var treeVisParam = {
+  min: 1,
+  max: 4,
+  palette: ['yellow', 'green']
+};
+/*
+Map.addLayer(Vancutsem1.selfMask(),treeVisParam,"Vancutsem 2015-2016");
+Map.addLayer(Vancutsem2.selfMask(),treeVisParam,"Vancutsem 2016-2017");
+Map.addLayer(Vancutsem3.selfMask(),treeVisParam,"Vancutsem 2017-2018");
+Map.addLayer(Vancutsem4.selfMask(),treeVisParam,"Vancutsem 2018-2019");
+Map.addLayer(Vancutsem5.selfMask(),treeVisParam,"Vancutsem 2019-2020");
+Map.addLayer(Vancutsem6.selfMask(),treeVisParam,"Vancutsem 2020-2021");
+*/
+
+var vforestloss1 = Vancutsem1.eq(2).mask(habitatmask);
+var vdegraded1 = Vancutsem1.eq(1).mask(habitatmask);
+
+var vforestloss2 = Vancutsem2.eq(2).mask(habitatmask);
+var vdegraded2 = Vancutsem2.eq(1).mask(habitatmask);
+
+var vforestloss3 = Vancutsem3.eq(2).mask(habitatmask);
+var vdegraded3 = Vancutsem3.eq(1).mask(habitatmask);
+
+var vforestloss4 = Vancutsem4.eq(2).mask(habitatmask);
+var vdegraded4 = Vancutsem4.eq(1).mask(habitatmask);
+
+var vforestloss5 = Vancutsem5.eq(2).mask(habitatmask);
+var vdegraded5 = Vancutsem5.eq(1).mask(habitatmask);
+
+var vforestloss6 = Vancutsem6.eq(2).mask(habitatmask);
+var vdegraded6 = Vancutsem6.eq(1).mask(habitatmask);
+
+//Map.addLayer(vforestgain5.selfMask(),treeVisParam,"Vancutsem gain 2019-2020");
+//Map.addLayer(vforestgain6.selfMask(),treeVisParam,"Vancutsem gain 2020-2021");
+
+var vforestloss_degraded1 = vforestloss1.or(vdegraded1);
+var vforestloss_degraded2 = vforestloss2.or(vdegraded2);
+var vforestloss_degraded3 = vforestloss3.or(vdegraded3);
+var vforestloss_degraded4 = vforestloss4.or(vdegraded4);
+var vforestloss_degraded5 = vforestloss5.or(vdegraded5);
+var vforestloss_degraded6 = vforestloss6.or(vdegraded6);
+/*
+Map.addLayer(vforestloss_degraded1.selfMask(), {},'vancutsemlossdegr1');
+Map.addLayer(vforestloss_degraded2.selfMask(), {},'vancutsemlossdegr2');
+Map.addLayer(vforestloss_degraded3.selfMask(), {},'vancutsemlossdegr3');
+Map.addLayer(vforestloss_degraded4.selfMask(), {},'vancutsemlossdegr4');
+Map.addLayer(vforestloss_degraded5.selfMask(), {},'vancutsemlossdegr5');
+Map.addLayer(vforestloss_degraded6.selfMask(), {},'vancutsemlossdegr6');
+*/
+var vforestloss16 = ee.Image.constant(16).mask(vforestloss1.selfMask()).cast({'constant': ee.PixelType('int', 0, 21)});
+var vforestloss17 = ee.Image.constant(17).mask(vforestloss2.selfMask()).cast({'constant': ee.PixelType('int', 0, 21)});
+var vforestloss18 = ee.Image.constant(18).mask(vforestloss3.selfMask()).cast({'constant': ee.PixelType('int', 0, 21)});
+var vforestloss19 = ee.Image.constant(19).mask(vforestloss4.selfMask()).cast({'constant': ee.PixelType('int', 0, 21)});
+var vforestloss20 = ee.Image.constant(20).mask(vforestloss5.selfMask()).cast({'constant': ee.PixelType('int', 0, 21)});
+var vforestloss21 = ee.Image.constant(21).mask(vforestloss6.selfMask()).cast({'constant': ee.PixelType('int', 0, 21)});
+var vancutsemloss = ee.ImageCollection.fromImages([vforestloss16,vforestloss17,vforestloss18, vforestloss19, vforestloss20, vforestloss21]);
+//print("vancutsemloss:", vancutsemloss);
+var BandVis6 = {
+  min: 16,
+  max: 21,
+  palette: ['#8B0000','#FF0000','#FF8C00', '#FFFF00','#32CD32','#006400']
+};
+Map.addLayer(vancutsemloss, BandVis6,'vancutsemloss');
+
+
+Export.image.toDrive({
+  image: vancutsemloss,
+  description:'vancutsemloss_img_SpiderMonkey',
+  folder: "GEE_Folder",
+  scale:30,
+  maxPixels:1e13,
+  region: geom,
+  skipEmptyTiles:true,
+  fileFormat: 'GeoTIFF'
+});
+
+var vforestlossdeg16 = ee.Image.constant(16).mask(vforestloss_degraded1.selfMask()).cast({'constant': ee.PixelType('int', 0, 21)});
+var vforestlossdeg17 = ee.Image.constant(17).mask(vforestloss_degraded2.selfMask()).cast({'constant': ee.PixelType('int', 0, 21)});
+var vforestlossdeg18 = ee.Image.constant(18).mask(vforestloss_degraded3.selfMask()).cast({'constant': ee.PixelType('int', 0, 21)});
+var vforestlossdeg19 = ee.Image.constant(19).mask(vforestloss_degraded4.selfMask()).cast({'constant': ee.PixelType('int', 0, 21)});
+var vforestlossdeg20 = ee.Image.constant(20).mask(vforestloss_degraded5.selfMask()).cast({'constant': ee.PixelType('int', 0, 21)});
+var vforestlossdeg21 = ee.Image.constant(21).mask(vforestloss_degraded6.selfMask()).cast({'constant': ee.PixelType('int', 0, 21)});
+var vancutsemlossdeg = ee.ImageCollection.fromImages([vforestlossdeg16,vforestlossdeg17,vforestlossdeg18, vforestlossdeg19, vforestlossdeg20, vforestlossdeg21]);
+
+var BandVis6 = {
+  min: 16,
+  max: 21,
+  palette: ['#8B0000','#FF0000','#FF8C00', '#FFFF00','#32CD32','#006400']
+};
+Map.addLayer(vancutsemlossdeg, BandVis6,'vancutsemlossdeg');
+
+Export.image.toDrive({
+  image: vancutsemlossdeg,
+  description:'vancutsemloss_degraded_img_SpiderMonkey',
+  folder: "GEE_Folder",
+  scale:30,
+  maxPixels:1e13,
+  region: geom,
+  skipEmptyTiles:true,
+  fileFormat: 'GeoTIFF'
+});
+//Map.addLayer(vforestloss1.selfMask(),treeVisParam,"Vancutsem forestloss1 2015-2016");
+//Map.addLayer(vforestloss_degraded1.selfMask(),treeVisParam,"Vancutsem forestloss_degraded1 2015-2016");
+
+/*
+Map.addLayer(vforestloss1.selfMask(),treeVisParam,"Vancutsem forestloss1 2015-2016");
+Map.addLayer(vforestloss2.selfMask(),treeVisParam,"Vancutsem 2016-2017");
+Map.addLayer(vforestloss3.selfMask(),treeVisParam,"Vancutsem 2017-2018");
+Map.addLayer(vforestloss4.selfMask(),treeVisParam,"Vancutsem 2018-2019");
+Map.addLayer(vforestloss5.selfMask(),treeVisParam,"Vancutsem 2019-2020");
+Map.addLayer(vforestloss6.selfMask(),treeVisParam,"Vancutsem 2020-2021");
+*/
+
+var agreeVisParam = {
+  min: 0,
+  max: 1,
+  palette: ['black', 'yellow']
+};
+
+
+var agree15_16 = (vforestloss_degraded1.eq(1)).and(hforestloss2.eq(1));
+Map.addLayer(agree15_16,agreeVisParam,"Vancutsem Hansen forestloss1 2015-2016");
+
+var agree15_16area = pixelArea.updateMask(agree15_16);
+var sumagree15_16area = ee.Image(agree15_16area).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters1 = sumagree15_16area.getNumber('area');
+var squareKilometers1 = squareMeters1.divide(1e6);
+//print("Forest habitat loss area agreement 2015-2016 - Vancutsem Hansen: ",squareKilometers1);
+
+var agree16_17 = (vforestloss_degraded2.eq(1)).and(hforestloss3.eq(1));
+//Map.addLayer(agree16_17,agreeVisParam,"Vancutsem Hansen forestloss1 2016-2017");
+
+var agree16_17area = pixelArea.updateMask(agree16_17);
+var sumagree16_17area = ee.Image(agree16_17area).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters2 = sumagree16_17area.getNumber('area');
+var squareKilometers2 = squareMeters2.divide(1e6);
+//print("Forest habitat loss area agreement 2016-2017 - Vancutsem Hansen: ",squareKilometers2);
+
+var agree17_18 = (vforestloss_degraded3.eq(1)).and(hforestloss4.eq(1));
+//Map.addLayer(agree17_18,agreeVisParam,"Vancutsem Hansen forestloss1 2017-2018");
+
+var agree17_18area = pixelArea.updateMask(agree17_18);
+var sumagree17_18area = ee.Image(agree17_18area).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters3 = sumagree17_18area.getNumber('area');
+var squareKilometers3 = squareMeters3.divide(1e6);
+//print("Forest habitat loss area agreement 2017-2018 - Vancutsem Hansen: ",squareKilometers3);
+
+var agree18_19 = (vforestloss_degraded4.eq(1)).and(hforestloss5.eq(1));
+//Map.addLayer(agree18_19,agreeVisParam,"Vancutsem Hansen forestloss1 2018-2019");
+
+var agree18_19area = pixelArea.updateMask(agree18_19);
+var sumagree18_19area = ee.Image(agree18_19area).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters4 = sumagree18_19area.getNumber('area');
+var squareKilometers4 = squareMeters4.divide(1e6);
+//print("Forest habitat loss area agreement 2018-2019 - Vancutsem Hansen: ",squareKilometers4);
+
+var agree19_20 = (vforestloss_degraded5.eq(1)).and(hforestloss6.eq(1));
+//Map.addLayer(agree19_20,agreeVisParam,"Vancutsem Hansen forestloss1 2019-2020");
+
+var agree19_20area = pixelArea.updateMask(agree19_20);
+var sumagree19_20area = ee.Image(agree19_20area).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters5 = sumagree19_20area.getNumber('area');
+var squareKilometers5 = squareMeters5.divide(1e6);
+//print("Forest habitat loss area agreement 2019-2020 - Vancutsem Hansen: ",squareKilometers5);
+
+var agree20_21 = (vforestloss_degraded6.eq(1)).and(hforestloss7.eq(1));
+//Map.addLayer(agree20_21,agreeVisParam,"Vancutsem Hansen forestloss1 2020_21");
+
+var agree20_21area = pixelArea.updateMask(agree20_21);
+var sumagree20_21area = ee.Image(agree20_21area).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters6 = sumagree20_21area.getNumber('area');
+var squareKilometers6 = squareMeters6.divide(1e6);
+//print("Forest habitat loss area agreement 2020_21 - Vancutsem Hansen: ",squareKilometers6);
+
+
+var list = ee.List([squareKilometers1, squareKilometers2, squareKilometers3, squareKilometers4, squareKilometers5, squareKilometers6]);
+
+var featureCollection = ee.FeatureCollection(list.map(function(element){
+  return ee.Feature(null,{prop:element});
+}));
+
+
+//print(featureCollection);
+
+//Export.table.toDrive(ee.Element(chartArray));
+Export.table.toDrive({
+  collection: featureCollection,
+  folder: 'GEE_Folder',
+  description:'Vancutsem_Hansen_SpiderMonkey_30m',
+  fileFormat: 'CSV'
+});
+
+var vagree15_16 = (vforestloss_degraded1.eq(1)).and(hforestloss2.eq(0));
+//Map.addLayer(vagree15_16,agreeVisParam,"Vancutsem notHansen forestloss1 2015-2016");
+var hagree15_16 = (vforestloss_degraded1.eq(0)).and(hforestloss2.eq(1));
+//Map.addLayer(hagree15_16,agreeVisParam,"notVancutsem Hansen forestloss1 2015-2016");
+
+var vagree16_17 = (vforestloss_degraded2.eq(1)).and(hforestloss3.eq(0));
+//Map.addLayer(vagree16_17,agreeVisParam,"Vancutsem notHansen forestloss1 2016-2017");
+var hagree16_17 = (vforestloss_degraded2.eq(0)).and(hforestloss3.eq(1));
+//Map.addLayer(hagree16_17,agreeVisParam,"notVancutsem Hansen forestloss1 2016-2017");
+
+var vagree17_18 = (vforestloss_degraded3.eq(1)).and(hforestloss4.eq(0));
+//Map.addLayer(vagree17_18,agreeVisParam,"Vancutsem notHansen forestloss1 2017-2018");
+var hagree17_18 = (vforestloss_degraded3.eq(0)).and(hforestloss4.eq(1));
+//Map.addLayer(hagree17_18,agreeVisParam,"notVancutsem Hansen forestloss1 2017-2018");
+
+var vagree18_19 = (vforestloss_degraded4.eq(1)).and(hforestloss5.eq(0));
+//Map.addLayer(vagree18_19,agreeVisParam,"Vancutsem notHansen forestloss1 2018-2019");
+var hagree18_19 = (vforestloss_degraded4.eq(0)).and(hforestloss5.eq(1));
+//Map.addLayer(hagree18_19,agreeVisParam,"notVancutsem Hansen forestloss1 2018-2019");
+
+var vagree19_20 = (vforestloss_degraded5.eq(1)).and(hforestloss6.eq(0));
+//Map.addLayer(vagree19_20,agreeVisParam,"Vancutsem notHansen forestloss1 2019-2020");
+var hagree19_20 = (vforestloss_degraded5.eq(0)).and(hforestloss6.eq(1));
+//Map.addLayer(hagree19_20,agreeVisParam,"notVancutsem Hansen forestloss1 2019-2020");
+
+var vagree20_21 = (vforestloss_degraded6.eq(1)).and(hforestloss7.eq(0));
+//Map.addLayer(vagree20_21,agreeVisParam,"Vancutsem notHansen forestloss1 2020-2021");
+var hagree20_21 = (vforestloss_degraded6.eq(0)).and(hforestloss7.eq(1));
+//Map.addLayer(hagree20_21,agreeVisParam,"notVancutsem Hansen forestloss1 2020-2021");
+
+var V1area = pixelArea.updateMask(vagree15_16);
+var sumV1area = ee.Image(V1area).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMetersv1 = sumV1area.getNumber('area');
+var squareKilometersv1 = squareMetersv1.divide(1e6);
+//print("Forest habitat loss area 2015-2016 - Vancutsem not Hansen: ",squareKilometersv1);
+
+var H1area = pixelArea.updateMask(hagree15_16);
+var sumH1area = ee.Image(H1area).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMetersh1 = sumH1area.getNumber('area');
+var squareKilometersh1 = squareMetersh1.divide(1e6);
+//print("Forest habitat loss area 2015-2016 - notVancutsem Hansen: ",squareKilometersh1);
+
+
+var V2area = pixelArea.updateMask(vagree16_17);
+var sumV2area = ee.Image(V2area).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMetersv2 = sumV2area.getNumber('area');
+var squareKilometersv2 = squareMetersv2.divide(1e6);
+//print("Forest habitat loss area 2016-2017 - Vancutsem not Hansen: ",squareKilometersv2);
+
+var H2area = pixelArea.updateMask(hagree16_17);
+var sumH2area = ee.Image(H2area).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMetersh2 = sumH2area.getNumber('area');
+var squareKilometersh2 = squareMetersh2.divide(1e6);
+//print("Forest habitat loss area 2016-2017 - notVancutsem Hansen: ",squareKilometersh2);
+
+var V3area = pixelArea.updateMask(vagree17_18);
+var sumV3area = ee.Image(V3area).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMetersv3 = sumV3area.getNumber('area');
+var squareKilometersv3 = squareMetersv3.divide(1e6);
+//print("Forest habitat loss area 2017-2018 - Vancutsem not Hansen: ",squareKilometersv3);
+
+var H3area = pixelArea.updateMask(hagree17_18);
+var sumH3area = ee.Image(H3area).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMetersh3 = sumH3area.getNumber('area');
+var squareKilometersh3 = squareMetersh3.divide(1e6);
+//print("Forest habitat loss area 2017-2018 - notVancutsem Hansen: ",squareKilometersh3);
+
+var V4area = pixelArea.updateMask(vagree18_19);
+var sumV4area = ee.Image(V4area).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMetersv4 = sumV4area.getNumber('area');
+var squareKilometersv4 = squareMetersv4.divide(1e6);
+//print("Forest habitat loss area 2018-2019 - Vancutsem not Hansen: ",squareKilometersv4);
+
+var H4area = pixelArea.updateMask(hagree18_19);
+var sumH4area = ee.Image(H4area).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMetersh4 = sumH4area.getNumber('area');
+var squareKilometersh4 = squareMetersh4.divide(1e6);
+//print("Forest habitat loss area 2018-2019 - notVancutsem Hansen: ",squareKilometersh4);
+
+var V5area = pixelArea.updateMask(vagree19_20);
+var sumV5area = ee.Image(V5area).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMetersv5 = sumV5area.getNumber('area');
+var squareKilometersv5 = squareMetersv5.divide(1e6);
+//print("Forest habitat loss area 2019-2020 - Vancutsem not Hansen: ",squareKilometersv5);
+
+var H5area = pixelArea.updateMask(hagree19_20);
+var sumH5area = ee.Image(H5area).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMetersh5 = sumH5area.getNumber('area');
+var squareKilometersh5 = squareMetersh5.divide(1e6);
+//print("Forest habitat loss area 2019-2020 - notVancutsem Hansen: ",squareKilometersh5);
+
+var V6area = pixelArea.updateMask(vagree20_21);
+var sumV6area = ee.Image(V6area).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMetersv6 = sumV6area.getNumber('area');
+var squareKilometersv6 = squareMetersv6.divide(1e6);
+//print("Forest habitat loss area 2020-2021 - Vancutsem not Hansen: ",squareKilometersv6);
+
+var H6area = pixelArea.updateMask(hagree20_21);
+var sumH6area = ee.Image(H6area).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMetersh6 = sumH6area.getNumber('area');
+var squareKilometersh6 = squareMetersh6.divide(1e6);
+//print("Forest habitat loss area 2020-2021 - notVancutsem Hansen: ",squareKilometersh6);
+
+var vlist = ee.List([squareKilometersv1, squareKilometersv2, squareKilometersv3, squareKilometersv4, squareKilometersv5, squareKilometersv6]);
+
+var vfeatureCollection = ee.FeatureCollection(vlist.map(function(element){
+  return ee.Feature(null,{prop:element});
+}));
+
+
+//print(vfeatureCollection);
+
+//Export.table.toDrive(ee.Element(chartArray));
+Export.table.toDrive({
+  collection: vfeatureCollection,
+  folder: 'GEE_Folder',
+  description:'Vancutsem_notHansen_SpiderMonkey_30m',
+  fileFormat: 'CSV'
+});
+
+var hlist = ee.List([squareKilometersh1, squareKilometersh2, squareKilometersh3, squareKilometersh4, squareKilometersh5, squareKilometersh6]);
+
+var hfeatureCollection = ee.FeatureCollection(hlist.map(function(element){
+  return ee.Feature(null,{prop:element});
+}));
+
+
+//print(hfeatureCollection);
+
+//Export.table.toDrive(ee.Element(chartArray));
+Export.table.toDrive({
+  collection: hfeatureCollection,
+  folder: 'GEE_Folder',
+  description:'notVancutsem_Hansen_SpiderMonkey_30m',
+  fileFormat: 'CSV'
+});
