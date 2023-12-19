@@ -1,4 +1,4 @@
-# forestdatasets
+# Global Forest Datasets Analysis
 Code accompanying global forest cover paper
 Citation: 
 Code author: Sarah Castle (saraheb3@illinois.edu), University of Illinois Urbana-Champaign
