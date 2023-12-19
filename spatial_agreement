@@ -1,0 +1,645 @@
+//Global Forest Cover and Forest Cover Change Datasets
+//Code: Globally map agreement between datasets; Generates Figure 1 and S1
+//Citation: [cite]
+//Written by: Sarah Castle
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+//Import datasets
+//Make sure to use the correct years for analysis.
+//Years should be checked and changed as needed for each dataset.
+//*****************************************************************************//
+//*****************************************************************************//
+
+//Copernicus global land cover
+//2015-2019
+//100 m
+var dataset1 = ee.Image("COPERNICUS/Landcover/100m/Proba-V-C3/Global/2019")
+.select('discrete_classification');
+//Map.addLayer(dataset1, {}, "Copernicus Land Cover");
+//print('Copernicus',dataset1);
+
+//Identify forest and non-forest areas to exclude forested areas from the TPP analysis
+var gtForests = dataset1.gt(110); 
+var ltForests = dataset1.lt(199); 
+var Forests = ltForests.and(gtForests);
+//Uncomment following line to view map of forested areas
+//Map.addLayer(Forests.selfMask(),{palette:['#228B22']},'Copernicus Forests');
+//print(Forests);
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+//MODIS Land Cover Type
+//2001-2021
+//500 m
+//Import all land cover types
+
+//**LC_Type 1
+var dataset = ee.ImageCollection('MODIS/006/MCD12Q1');
+var igbpLandCover = dataset.select('LC_Type1').filterDate('2019-01-01', '2019-12-31');
+var igbpLandCoverVis = {
+  min: 1.0,
+  max: 17.0,
+  palette: [
+    '05450a', '086a10', '54a708', '78d203', '009900', 'c6b044', 'dcd159',
+    'dade48', 'fbff13', 'b6ff05', '27ff87', 'c24f44', 'a5a5a5', 'ff6d4c',
+    '69fff8', 'f9ffa4', '1c0dff'
+  ],
+};
+//Map.addLayer(igbpLandCover, igbpLandCoverVis, 'IGBP Land Cover');
+//print('MODIS LC1',igbpLandCover);
+//Identify forest and non-forest areas to exclude forested areas from the TPP analysis
+var Forests2 = igbpLandCover.first().lt(6); //Excludes savannahs 
+//Uncomment following line to view map of forested areas
+//Map.addLayer(Forests2.selfMask(),{palette:['#228B22']},'MODIS IGBP Forests');
+
+//Extract savanna classes and add to forest layer 
+var Savannahs2a = igbpLandCover.first().neq(6);
+var Savannahs2b = igbpLandCover.first().neq(7);
+var ForestsSav2b = igbpLandCover.first().lt(10);
+var Savannahs2 = Savannahs2a.and(Savannahs2b);
+var Forests2b = Savannahs2.and(ForestsSav2b);
+//Uncomment following line to view map of forested areas
+//Map.addLayer(Forests2b.selfMask(),{palette:['#228B22']},'MODIS IGBP2 Forests');
+
+
+//**LC_Type 2
+var dataset = ee.ImageCollection('MODIS/006/MCD12Q1');
+var umdLandCover = dataset.select('LC_Type2').filterDate('2019-01-01', '2019-12-31');
+var umdLandCoverVis = {
+  min: 1.0,
+  max: 17.0,
+  palette: [
+    '05450a', '086a10', '54a708', '78d203', '009900', 'c6b044', 'dcd159',
+    'dade48', 'fbff13', 'b6ff05', '27ff87', 'c24f44', 'a5a5a5', 'ff6d4c',
+    '69fff8', 'f9ffa4', '1c0dff'
+  ],
+};
+//Map.addLayer(umdLandCover, umdLandCoverVis, 'UMD Land Cover');
+
+var water3 = umdLandCover.first().neq(0);
+var ForestsWater3 = umdLandCover.first().lt(6); //Excludes savannahs
+var Forests3 = ForestsWater3.and(water3);
+//Uncomment following line to view map of forested areas
+//Map.addLayer(Forests3.selfMask(),{palette:['#228B22']},'MODIS UMD Forests');
+
+var Savannahs3a = umdLandCover.first().neq(6);
+var Savannahs3b = umdLandCover.first().neq(7);
+var ForestsSav3b = umdLandCover.first().lt(10);
+var Savannahs3 = Savannahs3a.and(Savannahs3b);
+var Water3 = Savannahs3.and(water3);
+var Forests3b = Water3.and(ForestsSav3b);
+//Uncomment following line to view map of forested areas
+//Map.addLayer(Forests3b.selfMask(),{palette:['#228B22']},'MODIS UMD2 Forests');
+
+
+
+//**LC_Type 3
+var dataset = ee.ImageCollection('MODIS/006/MCD12Q1');
+var LAILandCover = dataset.select('LC_Type3').filterDate('2019-01-01', '2019-12-31');
+var LAILandCoverVis = {
+  min: 1.0,
+  max: 17.0,
+  palette: [
+    '05450a', '086a10', '54a708', '78d203', '009900', 'c6b044', 'dcd159',
+    'dade48', 'fbff13', 'b6ff05', '27ff87', 'c24f44', 'a5a5a5', 'ff6d4c',
+    '69fff8', 'f9ffa4', '1c0dff'
+  ],
+};
+//Map.addLayer(LAILandCover, LAILandCoverVis, 'LAI Land Cover');
+
+var nonveg4 = LAILandCover.first().neq(9);
+var urban4 = LAILandCover.first().neq(10);
+var ForestsOther4 = LAILandCover.first().gt(4); //Excludes savannahs
+var other4 = nonveg4.and(urban4);
+var Forests4 = ForestsOther4.and(other4);
+//Uncomment following line to view map of forested areas
+//Map.addLayer(Forests4.selfMask(),{palette:['#228B22']},'MODIS LAI Forests');
+
+var ForestsOtherSav4 = LAILandCover.first().gt(3);
+var Forests4b = ForestsOtherSav4.and(other4);
+//Uncomment following line to view map of forested areas
+//Map.addLayer(Forests4b.selfMask(),{palette:['#228B22']},'MODIS LAI2 Forests');
+
+
+
+//**LC_Type 4
+var dataset = ee.ImageCollection('MODIS/006/MCD12Q1');
+var bgcLandCover = dataset.select('LC_Type4').filterDate('2019-01-01', '2019-12-31');
+var bgcLandCoverVis = {
+  min: 1.0,
+  max: 17.0,
+  palette: [
+    '05450a', '086a10', '54a708', '78d203', '009900', 'c6b044', 'dcd159',
+    'dade48', 'fbff13', 'b6ff05', '27ff87', 'c24f44', 'a5a5a5', 'ff6d4c',
+    '69fff8', 'f9ffa4', '1c0dff'
+  ],
+};
+//Map.addLayer(bgcLandCover, bgcLandCoverVis, 'bgc Land Cover');
+
+var water5 = bgcLandCover.first().neq(0);
+var ForestsOther5 = bgcLandCover.first().lt(5);
+var Forests5 = ForestsOther5.and(water5);
+//Uncomment following line to view map of forested areas
+//Map.addLayer(Forests5.selfMask(),{palette:['#228B22']},'MODIS BGC Forests');
+
+
+
+//**LC_Type 5
+var dataset = ee.ImageCollection('MODIS/006/MCD12Q1');
+var apftLandCover = dataset.select('LC_Type5').filterDate('2019-01-01', '2019-12-31');
+var apftLandCoverVis = {
+  min: 1.0,
+  max: 17.0,
+  palette: [
+    '05450a', '086a10', '54a708', '78d203', '009900', 'c6b044', 'dcd159',
+    'dade48', 'fbff13', 'b6ff05', '27ff87', 'c24f44', 'a5a5a5', 'ff6d4c',
+    '69fff8', 'f9ffa4', '1c0dff'
+  ],
+};
+//Map.addLayer(apftLandCover, apftLandCoverVis, 'apft Land Cover');
+
+var water6 = apftLandCover.first().neq(0);
+var ForestsOther6 = apftLandCover.first().lt(5);
+var Forests6 = ForestsOther6.and(water6);
+//Uncomment following line to view map of forested areas
+//Map.addLayer(Forests6.selfMask(),{palette:['#228B22']},'MODIS APFT Forests');
+
+
+
+//**LC_Prop 1 FAO
+var dataset = ee.ImageCollection('MODIS/006/MCD12Q1');
+var FAOLandCover = dataset.select('LC_Prop1').filterDate('2019-01-01', '2019-12-31');
+var FAOLandCoverVis = {
+  min: 1.0,
+  max: 17.0,
+  palette: [
+    '05450a', '086a10', '54a708', '78d203', '009900', 'c6b044', 'dcd159',
+    'dade48', 'fbff13', 'b6ff05', '27ff87', 'c24f44', 'a5a5a5', 'ff6d4c',
+    '69fff8', 'f9ffa4', '1c0dff'
+  ],
+};
+//Map.addLayer(FAOLandCover, FAOLandCoverVis, 'FAO Land Cover');
+
+var gtFAO = FAOLandCover.first().gt(10);
+var ltFAO = FAOLandCover.first().lt(23);
+var Forests7 = gtFAO.and(ltFAO);
+//Uncomment following line to view map of forested areas
+//Map.addLayer(Forests7.selfMask(),{palette:['#228B22']},'MODIS FAO Forests');
+//print(Forests7);
+
+
+//**LC_Prop 2 FAO
+var dataset = ee.ImageCollection('MODIS/006/MCD12Q1');
+var FAOLandUse = dataset.select('LC_Prop2').filterDate('2019-01-01', '2019-12-31');
+var FAOLandUseVis = {
+  min: 1.0,
+  max: 17.0,
+  palette: [
+    '05450a', '086a10', '54a708', '78d203', '009900', 'c6b044', 'dcd159',
+    'dade48', 'fbff13', 'b6ff05', '27ff87', 'c24f44', 'a5a5a5', 'ff6d4c',
+    '69fff8', 'f9ffa4', '1c0dff'
+  ],
+};
+//Map.addLayer(FAOLandUse, FAOLandUseVis, 'FAO Land Use');
+
+var gtFAOUse = FAOLandUse.first().gt(9);
+var ltFAOUse = FAOLandUse.first().lt(26);
+var Forests8 = gtFAOUse.and(ltFAOUse);
+//Uncomment following line to view map of forested areas
+//Map.addLayer(Forests8.selfMask(),{palette:['#228B22']},'MODIS FAO Forests Land Use');
+
+
+//**LC_Prop 3 FAO
+var dataset = ee.ImageCollection('MODIS/006/MCD12Q1');
+var FAOLandhyd = dataset.select('LC_Prop3').filterDate('2019-01-01', '2019-12-31');
+var FAOLandhydVis = {
+  min: 1.0,
+  max: 17.0,
+  palette: [
+    '05450a', '086a10', '54a708', '78d203', '009900', 'c6b044', 'dcd159',
+    'dade48', 'fbff13', 'b6ff05', '27ff87', 'c24f44', 'a5a5a5', 'ff6d4c',
+    '69fff8', 'f9ffa4', '1c0dff'
+  ],
+};
+//Map.addLayer(FAOLandhyd, FAOLandhydVis, 'FAO Land Hydrology');
+
+var gtFAOhyd = FAOLandhyd.first().gt(9);
+var ltFAOhyd = FAOLandhyd.first().lt(21);//excludes woody wetlands: shrub and tree cover >10% (>1m). Permanently or seasonally inundated.
+var Forests9 = gtFAOhyd.and(ltFAOhyd);
+//Uncomment following line to view map of forested areas
+//Map.addLayer(Forests9,{},'MODIS FAO Forests Land Hydrology');
+
+var ltFAOhydb = FAOLandhyd.first().lt(28);
+var Forests9b = gtFAOhyd.and(ltFAOhydb);
+//Uncomment following line to view map of non-forested areas
+//Map.addLayer(Forests9b.selfMask(),{palette:['#228B22']},'MODIS FAO Forests Land Hydrology b');
+
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+
+//ESRI 2020 Land Cover
+
+var esri_lulc2020= ee.ImageCollection("projects/sat-io/open-datasets/landcover/ESRI_Global-LULC_10m").mosaic();
+//print(esri_lulc2020);
+var Forests10 = esri_lulc2020.eq(2);
+//print(Forests10);
+/*
+// Define a dictionary which will be used to make legend and visualize image on map
+var dict = {
+  "names": [
+    "Water",
+    "Trees",
+    "Grass",
+    "Flooded Vegetation",
+    "Crops",
+    "Scrub/Shrub",
+    "Built Area",
+    "Bare Ground",
+    "Snow/Ice",
+    "Clouds"
+  ],
+  "colors": [
+    "#1A5BAB",
+    "#358221",
+    "#A7D282",
+    "#87D19E",
+    "#FFDB5C",
+    "#EECFA8",
+    "#ED022A",
+    "#EDE9E4",
+    "#F2FAFF",
+    "#C8C8C8"
+  ]};
+
+
+// Add image to the map
+Map.addLayer(esri_lulc2020, {min:1, max:10, palette:dict['colors']}, 'ESRI LULC 10m');
+*/
+//Map.addLayer(Forests10.selfMask(),{palette:['#228B22']}, 'ESRI Forests');
+
+var esri_lulc_ts= ee.ImageCollection("projects/sat-io/open-datasets/landcover/ESRI_Global-LULC_10m_TS").filterDate('2020-01-01', '2020-12-31').mosaic();
+var Forests10_ts = esri_lulc_ts.eq(2);
+Map.addLayer(Forests10_ts.selfMask(),{palette:['#228B22']}, 'ESRI Trees');
+
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+
+//ESA WorldCover 2020
+
+var ESA_WC = ee.ImageCollection("ESA/WorldCover/v100").first().select('Map');
+
+//ESA WorldCover 2021
+//var ESA_WC21 = ee.ImageCollection("ESA/WorldCover/v200").first().select('Map');
+
+var visualization = {
+  bands: ['Map'],
+};
+//Map.addLayer(ESA_WC, visualization, "ESA WorldCover Landcover");
+
+var Forests11 = ESA_WC.eq(10);
+//Map.addLayer(Forests11.selfMask(),{palette:['#228B22']}, "ESA WorldCover Forests");
+//print(Forests11);
+
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+
+//PALSAR/PALSAR-2 Forest/Non-forest
+var palsar = ee.ImageCollection('JAXA/ALOS/PALSAR/YEARLY/FNF4')
+                  .filterDate('2018-01-01', '2019-12-31');
+var forestNonForest = palsar.select('fnf');
+var forestNonForestVis = {
+  min: 1.0,
+  max: 4.0,
+  palette: ["00B200","83EF62","FFFF99","0000FF"],
+};
+//Map.addLayer(forestNonForest, forestNonForestVis, 'Forest/Non-Forest');
+
+var Forests12 = palsar.first().lte(2);
+//Map.addLayer(Forests12.selfMask(),{palette:['#228B22']}, 'PALSAR Forest/Non-Forest');
+//print(Forests12);
+
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+//ESA-C3S-LC 2020
+var C3S_LLCS_2019 = ee.Image("users/saraheb3/C3S-LCCS-300m-2019");
+var C3S_LLCS_2020 = ee.Image("users/saraheb3/C3S-LCCS-300m-2020");
+
+//Map.addLayer(C3S_LLCS_2020, {},"C3S 2020");
+//print(C3S_LLCS_2020);
+var gtC3S = C3S_LLCS_2020.gte(50);
+var ltC3s = C3S_LLCS_2020.lte(90);
+var Forests13 = gtC3S.and(ltC3s);
+//print(Forests13);
+//Map.addLayer(Forests13, {},"C3S 2020 Forests");
+
+//ESA-C3S-LC 2019
+/*
+//Map.addLayer(C3S_LLCS_2019, {},"C3S 2019");
+//print(C3S_LLCS_2019);
+var gtC3S = C3S_LLCS_2019.gte(50);
+var ltC3s = C3S_LLCS_2019.lte(90);
+var Forests13 = gtC3S.and(ltC3s);
+//print(Forests13);
+//Map.addLayer(Forests13, {},"C3S 2020 Forests");
+*/
+
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+
+var GLAD = ee.Image("projects/glad/GLCLU2020/Forest_type");
+//print(GLAD);
+
+var visualizationg = {
+  min: 0,
+  max: 4,
+  palette: ['24126c', '659200', 'ffd966','FF6600','FF0000']
+};
+//Map.addLayer(GLAD, visualizationg);
+
+var Forests14 = (GLAD.eq(1)).or(GLAD.eq(3));
+//Map.addLayer(Forests14, visualizationg);
+
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+
+//Forests1: CGLC 2019
+//Forests2: MODIS LC1 2019
+//Forests3: MODIS LC2 2019
+//Forests4: MODIS LC3 2019
+//Forests5: MODIS LC4 2019
+//Forests6: MODIS LC5 2019
+//Forests7: MODIS FAO LC1 2019
+//Forests8: MODIS FAO LC2 2019
+//Forests9: MODIS FAO LC3 2019
+//Forests10: ESRI LC 2020
+//Forests11: ESA WorldCover 2020
+//Forests12: PALSAR 2017
+//Forests13: C3S-LCCS 2020
+//Forests14: GLAD-LULCC
+
+var singleBandVis14 = {
+  min: 1,
+  max: 14,
+  palette: ['#696969','#8B0000','#B22222','#FF0000','#FF8C00','#FFA500','#FFD700', '#FFFF00','#ADFF2F','#32CD32','#228B22','#006400']
+};
+
+var sumForests = Forests.add(Forests2).add(Forests3).add(Forests4).add(Forests5).add(Forests6).add(Forests7).add(Forests8).add(Forests9).add(Forests10).add(Forests11).add(Forests12).add(Forests13).add(Forests14).selfMask();
+//Map.addLayer(sumForests,singleBandVis14,'sumForests_noSavannah');
+//Removed FAO LLC3 Hydrology .add(Forests9)
+
+
+var worldGeom = 
+      ee.Geometry.Polygon(
+        [[[-180, 85],
+          [-180, -60],
+          [180, -60],
+          [180, 85]]], null, false);
+/*
+//Export forest extent data:
+Export.image.toDrive({
+  image: sumForests,
+  description:'SpatialAgreementForests_noSavanna',
+  folder: "GEE_Folder",
+  scale:1000,
+  maxPixels:1e13,
+  region: worldGeom,
+  skipEmptyTiles:true,
+  fileFormat: 'GeoTIFF'
+});*/
+
+var sumForests_Savanna = Forests.add(Forests2b).add(Forests3b).add(Forests4b).add(Forests5).add(Forests6).add(Forests7).add(Forests8).add(Forests10).add(Forests11).add(Forests12).add(Forests13).add(Forests14).selfMask();//.add(Forests8).add(Forests9b);
+//Map.addLayer(sumForests_Savanna,singleBandVis12,'sumForests_Savanna');
+//Removed FAO LLC3 Hydrology .add(Forests9b)
+/*
+//Export forest extent data:
+Export.image.toDrive({
+  image: sumForestsb,
+  description:'SpatialAgreementForests_Savanna',
+  folder: "GEE_Folder",
+  scale:1000,
+  maxPixels:1e13,
+  region: worldGeom,
+  skipEmptyTiles:true,
+  fileFormat: 'GeoTIFF'
+});*/
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+//Create and export Figure 1 map
+var singleBandVis8 = {
+  min: 1,
+  max: 8,
+  palette: ['#d53e4f','#f46d43', '#fdae61','#fee08b','#e6f598','#abdda4','#66c2a5','#3288bd']
+};
+var sumForestsc = Forests.add(Forests2).add(Forests7).add(Forests10).add(Forests11).add(Forests12).add(Forests13).add(Forests14).selfMask();
+Map.addLayer(sumForestsc,singleBandVis8,'sumForestsc_figure1');
+//Export forest extent data:
+Export.image.toDrive({
+  image: sumForestsc,
+  description:'SpatialAgreementForests_Figure1',
+  folder: "GEE_Folder",
+  scale:1000,
+  maxPixels:1e13,
+  region: worldGeom,
+  skipEmptyTiles:true,
+  fileFormat: 'GeoTIFF'
+});
+
+//Estimate world forest area (union of all areas defined as forest by at least one dataset)
+var pixelArea = ee.Image.pixelArea();
+var forestArea1 = pixelArea.updateMask(sumForestsc);
+var sum1 = ee.Image(forestArea1).reduceRegion({ 
+    geometry: worldGeom,
+    reducer: ee.Reducer.sum(),
+    scale: 100, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters1 = sum1.getNumber('area');
+var squareKilometers1 = squareMeters1.divide(1e6);
+print("Forest area: ",squareKilometers1);
+var forestarea = squareKilometers1;
+
+var featureCollection = ee.FeatureCollection(ee.Feature(null,{prop:forestarea}));
+print(featureCollection);
+
+//Export.table.toDrive(ee.Element(chartArray));
+Export.table.toDrive({
+  collection: featureCollection,
+  folder: 'GEE_Folder',
+  description:'forestarea',
+  fileFormat: 'CSV'
+});
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+//Create and export Figure S1 map with savanna class
+var sumForestsc_savanna = Forests.add(Forests2b).add(Forests7).add(Forests10).add(Forests11).add(Forests12).add(Forests13).add(Forests14).selfMask();
+Map.addLayer(sumForestsc_savanna,singleBandVis8,'sumForestsc_savanna');
+//Export forest extent data:
+Export.image.toDrive({
+  image: sumForestsc_savanna,
+  description:'SpatialAgreementForests_FigureS1_savanna',
+  folder: "GEE_Folder",
+  scale:1000,
+  maxPixels:1e13,
+  region: worldGeom,
+  skipEmptyTiles:true,
+  fileFormat: 'GeoTIFF'
+});
+
+//Estimate world forest area (union of all areas defined as forest by at least one dataset)
+var pixelArea = ee.Image.pixelArea();
+var forestArea1_sav = pixelArea.updateMask(sumForestsc_savanna);
+var sum1_sav = ee.Image(forestArea1_sav).reduceRegion({ 
+    geometry: worldGeom,
+    reducer: ee.Reducer.sum(),
+    scale: 100, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters1 = sum1_sav.getNumber('area');
+var squareKilometers1 = squareMeters1.divide(1e6);
+print("Forest area: ",squareKilometers1);
+var forestarea = squareKilometers1;
+
+var featureCollection_sav = ee.FeatureCollection(ee.Feature(null,{prop:forestArea1_sav}));
+print(featureCollection_sav);
+
+//Export.table.toDrive(ee.Element(chartArray));
+Export.table.toDrive({
+  collection: featureCollection_sav,
+  folder: 'GEE_Folder',
+  description:'forestarea_savanna',
+  fileFormat: 'CSV'
+});
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+//COMPARE DIFFERENT MODIS DATASETS
+var sumForestsd = Forests2.add(Forests3).add(Forests4).add(Forests5).add(Forests6).add(Forests7).add(Forests8).selfMask();
+//Not including FAO LLC3 Hydrology .add(Forests9b)
+//Map.addLayer(sumForestsd,singleBandVis6,'sumForestsd_MODISdatasets');
+Export.image.toDrive({
+  image: sumForestsd,
+  description:'SpatialAgreement_MODIS-datasets',
+  folder: "GEE_Folder",
+  scale:1000,
+  maxPixels:1e13,
+  region: worldGeom,
+  skipEmptyTiles:true,
+  fileFormat: 'GeoTIFF'
+});
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+//Create legend on the display
+// Create a panel to hold the legend widget
+var legend = ui.Panel({
+  style: {
+    backgroundColor: '#DCDCDC',
+    position: 'bottom-left',
+    padding: '8px 15px'
+  }
+});
+
+// Define a dictionary which will be used to make legend and visualize image on map
+var dict = {
+  "names": [
+    "1 dataset",
+    "2 datasets agree",
+    "3 datasets agree",
+    "4 datasets agree",
+    "5 datasets agree",
+    "6 datasets agree",
+    "7 datasets agree",
+    "8 datasets agree"
+  ],
+  "colors": [
+    '#d53e4f','#f46d43', '#fdae61','#fee08b','#e6f598','#abdda4','#66c2a5','#3288bd'
+  ]};
+  
+// Function to generate the legend
+function addCategoricalLegend(panel, dict, title) {
+  
+  // Create and add the legend title.
+  var legendTitle = ui.Label({
+    value: title,
+    style: {
+      fontWeight: 'bold',
+      fontSize: '18px',
+      margin: '0 0 4px 0',
+      padding: '0'
+    }
+  });
+  panel.add(legendTitle);
+  
+  var loading = ui.Label('Loading legend...', {margin: '2px 0 4px 0'});
+  panel.add(loading);
+  
+  // Creates and styles 1 row of the legend.
+  var makeRow = function(color, name) {
+    // Create the label that is actually the colored box.
+    var colorBox = ui.Label({
+      style: {
+        backgroundColor: color,
+        // Use padding to give the box height and width.
+        padding: '8px',
+        margin: '0 0 4px 0'
+      }
+    });
+  
+    // Create the label filled with the description text.
+    var description = ui.Label({
+      value: name,
+      style: {margin: '0 0 4px 6px'}
+    });
+  
+    return ui.Panel({
+      widgets: [colorBox, description],
+      layout: ui.Panel.Layout.Flow('horizontal')
+    });
+  };
+  
+  // Get the list of palette colors and class names from the image.
+  var palette = dict['colors'];
+  var names = dict['names'];
+  loading.style().set('shown', false);
+  for (var i = 0; i < names.length; i++) {
+    panel.add(makeRow(palette[i], names[i]));
+  }
+  Map.add(panel);
+}
+
+  // Display map and legend 
+
+
+// Add the legend to the map
+addCategoricalLegend(legend, dict, 'Spatial agreement among datasets');
+
+
+
+//-----------------------------------------------------------------------------------------//
