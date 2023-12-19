@@ -1,0 +1,2062 @@
+//Global Forest Cover and Forest Cover Change Datasets
+//Code: Estimate forest area defined by each dataset within IUCN Red List Species Range; Generates Table S3
+//Citation: [cite]
+//Author: Sarah Castle
+
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+//Users will need to download the species range for the species of interest from IUCN Red List and import into GEE. 
+//Change the following line to import the user-imported species range. 
+var habitat = ee.FeatureCollection("users/saraheb3/WhiteCheekedSpiderMonkey");
+//Create bounding geometry for habitat extent
+var geom = habitat.first().geometry().bounds();
+Map.addLayer(geom);
+var habitatmask = habitat.reduceToImage({properties: ['PRESENCE'], reducer: ee.Reducer.mode()});
+//Map.addLayer(habitatmask,{},'species');
+//print(habitatmask);
+
+//Input year of analysis
+var year = 2019;
+
+//map of pixel area
+var pixelArea = ee.Image.pixelArea();
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+//Copernicus global land cover
+//2015-2019
+//100 m
+var dataset1 = ee.Image("COPERNICUS/Landcover/100m/Proba-V-C3/Global/"+year)
+.select('discrete_classification');
+dataset1 = dataset1.mask(habitatmask);
+
+//Identify forest and non-forest areas to exclude forested areas from the TPP analysis
+var gtForests = dataset1.gt(110); 
+var ltForests = dataset1.lt(199); 
+var Forests = ltForests.and(gtForests);
+//Map.addLayer(Forests.selfMask(),{palette:['#228B22']},'Copernicus Forests');
+//print(Forests);
+
+var forestArea = pixelArea.updateMask(Forests);
+//Map.addLayer(forestArea,{palette:['#228B22']},'Copernicus Forest Area');
+
+//generate sum of forest area for range
+var Copernicus_sumHabitat = ee.Image(forestArea).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 100, 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters = Copernicus_sumHabitat.getNumber('area');
+var squareKilometers = squareMeters.divide(1e6);
+print("Forest habitat area "+year+" - Copernicus: ",squareKilometers);
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+//MODIS Land Cover Type
+//2001-2020
+//500 m
+//**LC_Type 1
+var dataset = ee.ImageCollection('MODIS/006/MCD12Q1');
+var igbpLandCover = dataset.select('LC_Type1').filterDate(year+'-01-01', year+'-12-31');
+
+igbpLandCover = igbpLandCover.first().mask(habitatmask);
+
+var Forests2 = igbpLandCover.lt(6); //Excludes savannahs 
+//Map.addLayer(Forests2.selfMask(),{palette:['#228B22']},'MODIS IGBP Forests');
+
+var forestArea = pixelArea.updateMask(Forests2);
+//Map.addLayer(forestArea,{palette:['#228B22']},'Forest Area');
+
+//generate sum of forest area for range
+var IGBP_sumHabitat = ee.Image(forestArea).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 100,
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters = IGBP_sumHabitat.getNumber('area');
+var squareKilometers = squareMeters.divide(1e6);
+print("Forest habitat area "+year+" - IGBP: ",squareKilometers);
+
+//---------------------------------------------------------------
+//**LC_Prop 1 FAO
+var dataset = ee.ImageCollection('MODIS/006/MCD12Q1');
+var FAOLandUse = dataset.select('LC_Prop1').filterDate(year+'-01-01', year+'-12-31');
+
+FAOLandUse = FAOLandUse.first().mask(habitatmask);
+
+var gtFAO = FAOLandUse.gt(10);
+var ltFAO = FAOLandUse.lt(23);
+var Forests7 = gtFAO.and(ltFAO);
+//Map.addLayer(Forests7.selfMask(),{palette:['#228B22']},'MODIS FAO Forests Land Cover');
+
+var forestArea = pixelArea.updateMask(Forests7);
+//Map.addLayer(forestArea,{palette:['#228B22']},' Forest Area');
+
+//generate sum of forest area for range
+var FAOLLC1_sumHabitat = ee.Image(forestArea).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 100, 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters = FAOLLC1_sumHabitat.getNumber('area');
+var squareKilometers = squareMeters.divide(1e6);
+print("Forest habitat area "+year+" - FAOLLC1: ",squareKilometers);
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+//ESRI 2020 Land Cover
+
+var esri_lulc2020= ee.ImageCollection("projects/sat-io/open-datasets/landcover/ESRI_Global-LULC_10m").mosaic();
+esri_lulc2020 = esri_lulc2020.mask(habitatmask);
+
+var Forests10 = esri_lulc2020.eq(2);
+
+//ESRI 2017-2022 Land Cover
+var esri_lulc_ts= ee.ImageCollection("projects/sat-io/open-datasets/landcover/ESRI_Global-LULC_10m_TS").filterDate(year+'-01-01', year+'-12-31').mosaic();
+esri_lulc_ts = esri_lulc_ts.mask(habitatmask);
+
+var Forests10_ts = esri_lulc_ts.eq(2);
+Map.addLayer(Forests10_ts.selfMask(),{palette:['#228B22']}, 'ESRI Trees');
+
+
+//var Forests10_ts = Forests10_19.mask(habitatmask);
+var forestArea = pixelArea.updateMask(Forests10_ts);
+//Map.addLayer(Forests10_ts.selfMask(),{palette:['#228B22']}, 'ESRI Trees');
+
+//generate sum of forest area for range
+var ESRI_sumHabitat = ee.Image(forestArea).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 100,  
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters = ESRI_sumHabitat.getNumber('area');
+var squareKilometers = squareMeters.divide(1e6);
+print("Forest habitat area "+year+" - ESRI: ",squareKilometers);
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+//ESA WorldCover 2020
+
+var ESA_WC = ee.ImageCollection("ESA/WorldCover/v100").first().select('Map');
+ESA_WC = ESA_WC.mask(habitatmask);
+
+var Forests11 = ESA_WC.eq(10);
+//Map.addLayer(Forests11.selfMask(),{palette:['#228B22']}, "ESA WorldCover Forests");
+
+Forests11 = Forests11.mask(habitatmask);
+
+var forestArea = pixelArea.updateMask(Forests11);
+//Map.addLayer(Forests11,{palette:['#228B22']},' ESA WC');
+
+//generate sum of forest area for range
+var ESAWC_sumHabitat = ee.Image(forestArea).reduceRegion({
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 100, 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters = ESAWC_sumHabitat.getNumber('area');
+var squareKilometers = squareMeters.divide(1e6);
+print("Forest habitat area "+year+" - ESAWC: ",squareKilometers);
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+//PALSAR/PALSAR-2 Forest/Non-forest
+/*var palsar = ee.ImageCollection('JAXA/ALOS/PALSAR/YEARLY/FNF4')
+                  .filterDate(year+'-01-01', year+'-12-31');
+var forestNonForest = palsar.select('fnf');*/
+
+var dataset = ee.ImageCollection('JAXA/ALOS/PALSAR/YEARLY/FNF4')
+                  .filterDate(year+'-01-01', year+'-12-31');
+var forestNonForest = dataset.select('fnf');
+
+
+forestNonForest = forestNonForest.first().mask(habitatmask);
+
+var Forests12 = forestNonForest.lte(2);
+//Map.addLayer(Forests12.selfMask(),{palette:['#228B22']}, 'PALSAR Forest/Non-Forest');
+
+
+var forestArea = pixelArea.updateMask(Forests12);
+//Map.addLayer(forestArea,{palette:['#228B22']},' Forest Area');
+
+//generate sum of forest area for range
+var FNF_sumHabitat = ee.Image(forestArea).reduceRegion({
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 100, 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters = FNF_sumHabitat.getNumber('area');
+var squareKilometers = squareMeters.divide(1e6);
+print("Forest habitat area "+year+" - FNF: ",squareKilometers);
+
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+//Copernicus Climate Change Service global Land Cover (C3S-LC)
+var C3S_LLCS_2019 = ee.Image("users/saraheb3/C3S-LCCS-300m-2019"),
+    C3S_LLCS_2020 = ee.Image("users/saraheb3/C3S-LCCS-300m-2020"),
+    C3S_LLCS_2016 = ee.Image("users/saraheb3/C3S-2016"),
+    C3S_LLCS_2017 = ee.Image("users/saraheb3/C3S-2017"),
+    C3S_LLCS_2018 = ee.Image("users/saraheb3/C3S-2018"),
+    C3S_LLCS_2015 = ee.Image("users/saraheb3/ESACCI-2015");
+    
+//Map.addLayer(C3S_LLCS_2020, {},"C3S 2020");
+//print(C3S_LLCS_2020);
+
+
+var C3S = C3S_LLCS_2020.mask(habitatmask);
+
+var gtC3S = C3S.gte(50);
+var ltC3s = C3S.lte(90);
+var Forests13 = gtC3S.and(ltC3s);
+
+
+var forestArea = pixelArea.updateMask(Forests13);
+//Map.addLayer(Forests13,{palette:['#228B22']},' C3S 2019');
+
+//generate sum of forest area for range
+var C3S_sumHabitat = ee.Image(forestArea).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 100,  
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters = C3S_sumHabitat.getNumber('area');
+var squareKilometers = squareMeters.divide(1e6);
+//Print FPP value for country
+print("Forest habitat area "+year+" - C3S: ",squareKilometers);
+
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+
+var GLAD = ee.Image("projects/glad/GLCLU2020/Forest_type");
+//print(GLAD);
+
+var visualizationg = {
+  min: 0,
+  max: 4,
+  palette: ['24126c', '659200', 'ffd966','FF6600','FF0000']
+};
+//Map.addLayer(GLAD, visualizationg);
+
+var Forests14 = (GLAD.eq(1)).or(GLAD.eq(3));
+Forests14 = Forests14.mask(habitatmask);
+var forestArea = pixelArea.updateMask(Forests14);
+Map.addLayer(Forests14);
+//Map.addLayer(Forests14, visualizationg);
+
+//generate sum of forest area for range
+var GLAD_sumHabitat = ee.Image(forestArea).reduceRegion({
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 100,
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters = GLAD_sumHabitat.getNumber('area');
+var squareKilometers = squareMeters.divide(1e6);
+print("Forest habitat area "+year+" - GLAD: ",squareKilometers);
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+
+var singleBandVis8 = {
+  min: 1,
+  max: 8,
+  palette: ['#B22222','#FF0000','#FF8C00', '#FFFF00','#ADFF2F','#32CD32','#006400']
+};
+var sumForests = Forests.add(Forests2).add(Forests7).add(Forests10_ts).add(Forests11).add(Forests12).add(Forests13).add(Forests14).selfMask();
+//sumForests = sumForests.mask(habitatmask);
+//Map.addLayer(sumForests,singleBandVis7,'sumForests_onlyIGBP-FAOLLC1');
+
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+//Forest Cover Change Analysis
+//Copernicus Global Forest Cover
+var year1 = 2015;
+var year2 = 2016;
+var year3 = 2017;
+var year4 = 2018;
+var year5 = 2019;
+
+
+var pixelArea = ee.Image.pixelArea();
+
+//Copernicus global land cover
+//2015-2019
+//100 m
+var copernicus1 = ee.Image("COPERNICUS/Landcover/100m/Proba-V-C3/Global/"+year1)
+.select('discrete_classification');
+copernicus1 = copernicus1.mask(habitatmask);
+
+var treeVisParam = {
+  min: 1,
+  max: 2,
+  palette: ['yellow', 'green']
+};
+
+
+//Identify forest areas
+var gtForests1 = copernicus1.gt(110); 
+var ltForests1 = copernicus1.lt(199); 
+var Forests1 = ltForests1.and(gtForests1).add(1);
+//Map.addLayer(Forests1.selfMask(),treeVisParam,'Copernicus Forests1');
+//print(Forests);
+
+
+var copernicus2 = ee.Image("COPERNICUS/Landcover/100m/Proba-V-C3/Global/"+year2)
+.select('discrete_classification');
+copernicus2 = copernicus2.mask(habitatmask);
+
+//Identify forest areas
+var gtForests2 = copernicus2.gt(110); 
+var ltForests2 = copernicus2.lt(199); 
+var Forests2 = ltForests2.and(gtForests2).add(1);
+//Map.addLayer(Forests2.selfMask(),treeVisParam,'Copernicus Forests2');
+//print(Forests2);
+
+var copernicus3 = ee.Image("COPERNICUS/Landcover/100m/Proba-V-C3/Global/"+year3)
+.select('discrete_classification');
+copernicus3 = copernicus3.mask(habitatmask);
+
+//Identify forest areas
+var gtForests3 = copernicus3.gt(110); 
+var ltForests3 = copernicus3.lt(199); 
+var Forests3 = ltForests3.and(gtForests3).add(1);
+//Map.addLayer(Forests3.selfMask(),treeVisParam,'Copernicus Forests3');
+//print(Forests3);
+
+var copernicus4 = ee.Image("COPERNICUS/Landcover/100m/Proba-V-C3/Global/"+year4)
+.select('discrete_classification');
+copernicus3 = copernicus4.mask(habitatmask);
+
+//Identify forest areas
+var gtForests4 = copernicus4.gt(110); 
+var ltForests4 = copernicus4.lt(199); 
+var Forests4 = ltForests4.and(gtForests4).add(1);
+//Map.addLayer(Forests4.selfMask(),treeVisParam,'Copernicus Forests4');
+//print(Forests4);
+
+var copernicus5 = ee.Image("COPERNICUS/Landcover/100m/Proba-V-C3/Global/"+year5)
+.select('discrete_classification');
+copernicus5 = copernicus5.mask(habitatmask);
+
+//Identify forest areas
+var gtForests5 = copernicus5.gt(110); 
+var ltForests5 = copernicus5.lt(199); 
+var Forests5 = ltForests5.and(gtForests5).add(1);
+//Map.addLayer(Forests5.selfMask(),treeVisParam,'Copernicus Forests5');
+//print(Forests5);
+
+var forestDiff1 = Forests1.subtract(Forests2);
+var forestDiff2 = Forests2.subtract(Forests3);
+var forestDiff3 = Forests3.subtract(Forests4);
+var forestDiff4 = Forests4.subtract(Forests5);
+
+
+var treeLossVisParam = {
+  min: -1,
+  max: 1,
+  palette: ['yellow', 'green','purple']
+};
+
+Map.addLayer(forestDiff1,treeLossVisParam,'Copernicus forestDiff');
+Map.addLayer(forestDiff2,treeLossVisParam,'Copernicus forestDiff2');
+Map.addLayer(forestDiff3,treeLossVisParam,'Copernicus forestDiff3');
+Map.addLayer(forestDiff4,treeLossVisParam,'Copernicus forestDiff4');
+
+var forestloss1 = forestDiff1.eq(1);
+var forestgain1 = forestDiff1.eq(-1);
+//Map.addLayer(forestloss1.selfMask(),{palette:['#228B22']},'forestloss1');
+//Map.addLayer(forestgain1.selfMask(),{palette:['#228B22']},'forestgain1');
+
+var forestloss2 = forestDiff2.eq(1);
+var forestgain2 = forestDiff2.eq(-1);
+//Map.addLayer(forestloss2.selfMask(),{palette:['#228B22']},'forestloss2');
+//Map.addLayer(forestgain2.selfMask(),{palette:['#228B22']},'forestgain2');
+
+var forestloss3 = forestDiff3.eq(1);
+var forestgain3 = forestDiff3.eq(-1);
+//Map.addLayer(forestloss3.selfMask(),{palette:['#228B22']},'forestloss3');
+//Map.addLayer(forestgain3.selfMask(),{palette:['#228B22']},'forestgain3');
+
+var forestloss4 = forestDiff4.eq(1);
+var forestgain4 = forestDiff4.eq(-1);
+//Map.addLayer(forestloss4.selfMask(),{palette:['#228B22']},'forestloss4');
+//Map.addLayer(forestgain4.selfMask(),{palette:['#228B22']},'forestgain4');
+
+var forestlossArea1 = pixelArea.updateMask(forestloss1);
+
+var sumlossHabitat1 = ee.Image(forestlossArea1).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 100, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters1 = sumlossHabitat1.getNumber('area');
+var squareKilometers1 = squareMeters1.divide(1e6);
+print("Forest habitat loss area "+year1+"-"+year2+" - Copernicus: ",squareKilometers1);
+
+var forestlossArea2 = pixelArea.updateMask(forestloss2);
+var sumlossHabitat2 = ee.Image(forestlossArea2).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 100, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters2 = sumlossHabitat2.getNumber('area');
+var squareKilometers2 = squareMeters2.divide(1e6);
+print("Forest habitat loss area "+year2+"-"+year3+" - Copernicus: ",squareKilometers2);
+
+var forestlossArea3 = pixelArea.updateMask(forestloss3);
+var sumlossHabitat3 = ee.Image(forestlossArea3).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 100, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters3 = sumlossHabitat3.getNumber('area');
+var squareKilometers3 = squareMeters3.divide(1e6);
+print("Forest habitat loss area "+year3+"-"+year4+" - Copernicus: ",squareKilometers3);
+
+var forestlossArea4 = pixelArea.updateMask(forestloss4);
+var sumlossHabitat4 = ee.Image(forestlossArea4).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 100, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters4 = sumlossHabitat4.getNumber('area');
+var squareKilometers4 = squareMeters4.divide(1e6);
+print("Forest habitat loss area "+year4+"-"+year5+" - Copernicus: ",squareKilometers4);
+
+var list = ee.List([squareKilometers1, squareKilometers2, squareKilometers3, squareKilometers4]);
+
+var featureCollection = ee.FeatureCollection(list.map(function(element){
+  return ee.Feature(null,{prop:element});
+}));
+
+
+print(featureCollection);
+
+//Export.table.toDrive(ee.Element(chartArray));
+Export.table.toDrive({
+  collection: featureCollection,
+  folder: 'GEE_Folder',
+  description:'Copernicus_deforestation_SpiderMonkey_100m',
+  fileFormat: 'CSV'
+});
+
+
+///CGLC Gain
+
+var forestgainArea1 = pixelArea.updateMask(forestgain1);
+var sumgainHabitat1 = ee.Image(forestgainArea1).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 100, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters1 = sumgainHabitat1.getNumber('area');
+var squareKilometers1 = squareMeters1.divide(1e6);
+print("Forest habitat gain area 2015-2016 - Copernicus: ",squareKilometers1);
+
+var forestgainArea2 = pixelArea.updateMask(forestgain2);
+var sumgainHabitat2 = ee.Image(forestgainArea2).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 100, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters2 = sumgainHabitat2.getNumber('area');
+var squareKilometers2 = squareMeters2.divide(1e6);
+print("Forest habitat gain area 2016-2017 - Copernicus: ",squareKilometers2);
+
+var forestgainArea3 = pixelArea.updateMask(forestgain3);
+var sumgainHabitat3 = ee.Image(forestgainArea3).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 100, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters3 = sumgainHabitat3.getNumber('area');
+var squareKilometers3 = squareMeters3.divide(1e6);
+print("Forest habitat gain area 2017-2018 - Copernicus: ",squareKilometers3);
+
+var forestgainArea4 = pixelArea.updateMask(forestgain4);
+var sumgainHabitat4 = ee.Image(forestgainArea4).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 100, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters4 = sumgainHabitat4.getNumber('area');
+var squareKilometers4 = squareMeters4.divide(1e6);
+print("Forest habitat gain area 2018-2019 - Copernicus: ",squareKilometers4);
+
+var list = ee.List([squareKilometers1, squareKilometers2, squareKilometers3, squareKilometers4]);
+
+var featureCollection = ee.FeatureCollection(list.map(function(element){
+  return ee.Feature(null,{prop:element});
+}));
+
+
+print(featureCollection);
+
+//Export.table.toDrive(ee.Element(chartArray));
+Export.table.toDrive({
+  collection: featureCollection,
+  folder: 'GEE_Folder',
+  description:'Copernicus_forestGain_SpiderMonkey_100m',
+  fileFormat: 'CSV'
+});
+
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+//JAXA Forest/Non-forest
+var pixelArea = ee.Image.pixelArea();
+
+var treeVisParam = {
+  min: 1,
+  max: 2,
+  palette: ['yellow', 'green']
+};
+
+//PALSAR/PALSAR-2 Forest/Non-forest
+var palsar17 = ee.ImageCollection('JAXA/ALOS/PALSAR/YEARLY/FNF4')
+                  .filterDate('2017-01-01', '2017-12-31');
+var forestNonForest17 = palsar17.select('fnf');
+
+var Forests1 = palsar17.first().mask(habitatmask).lte(2).add(1);
+
+//PALSAR/PALSAR-2 Forest/Non-forest
+var palsar18 = ee.ImageCollection('JAXA/ALOS/PALSAR/YEARLY/FNF4')
+                  .filterDate('2018-01-01', '2018-12-31');
+var forestNonForest18 = palsar18.select('fnf');
+
+var Forests2 = palsar18.first().mask(habitatmask).lte(2).add(1);
+
+//PALSAR/PALSAR-2 Forest/Non-forest
+var palsar19 = ee.ImageCollection('JAXA/ALOS/PALSAR/YEARLY/FNF4')
+                  .filterDate('2019-01-01', '2019-12-31');
+var forestNonForest19 = palsar19.select('fnf');
+
+var Forests3 = palsar19.first().mask(habitatmask).lte(2).add(1);
+
+//PALSAR/PALSAR-2 Forest/Non-forest
+var palsar20 = ee.ImageCollection('JAXA/ALOS/PALSAR/YEARLY/FNF4')
+                  .filterDate('2020-01-01', '2020-12-31');
+var forestNonForest20 = palsar17.select('fnf');
+
+var Forests4 = palsar20.first().mask(habitatmask).lte(2).add(1);
+
+
+//Map.addLayer(Forests1.selfMask(),treeVisParam, 'PALSAR Forest/Non-Forest 2017');
+//Map.addLayer(Forests2.selfMask(),treeVisParam, 'PALSAR Forest/Non-Forest 2018');
+//Map.addLayer(Forests3.selfMask(),treeVisParam, 'PALSAR Forest/Non-Forest 2019');
+//Map.addLayer(Forests4.selfMask(),treeVisParam, 'PALSAR Forest/Non-Forest 2020');
+
+
+
+
+
+var forestDiff1 = Forests1.subtract(Forests2);
+var forestDiff2 = Forests2.subtract(Forests3);
+var forestDiff3 = Forests3.subtract(Forests4);
+
+var treeLossVisParam = {
+  min: -1,
+  max: 1,
+  palette: ['yellow', 'green','purple']
+};
+
+Map.addLayer(forestDiff1,treeLossVisParam,'ESRI forestDiff');
+Map.addLayer(forestDiff2,treeLossVisParam,'ESRI forestDiff2');
+Map.addLayer(forestDiff3,treeLossVisParam,'ESRI forestDiff3');
+
+var forestloss1 = forestDiff1.eq(1);
+var forestgain1 = forestDiff1.eq(-1);
+//Map.addLayer(forestloss1.selfMask(),{palette:['#228B22']},'forestloss1');
+//Map.addLayer(forestgain1.selfMask(),{palette:['#228B22']},'forestgain1');
+
+var forestloss2 = forestDiff2.eq(1);
+var forestgain2 = forestDiff2.eq(-1);
+//Map.addLayer(forestloss2.selfMask(),{palette:['#228B22']},'forestloss2');
+//Map.addLayer(forestgain2.selfMask(),{palette:['#228B22']},'forestgain2');
+
+var forestloss3 = forestDiff3.eq(1);
+var forestgain3 = forestDiff3.eq(-1);
+//Map.addLayer(forestloss3.selfMask(),{palette:['#228B22']},'forestloss3');
+//Map.addLayer(forestgain3.selfMask(),{palette:['#228B22']},'forestgain3');
+
+
+var forestlossArea1 = pixelArea.updateMask(forestloss1);
+var sumlossHabitat1 = ee.Image(forestlossArea1).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters1 = sumlossHabitat1.getNumber('area');
+var squareKilometers1 = squareMeters1.divide(1e6);
+print("Forest habitat loss area 2017-2018 - FNF: ",squareKilometers1);
+
+var forestlossArea2 = pixelArea.updateMask(forestloss2);
+var sumlossHabitat2 = ee.Image(forestlossArea2).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters2 = sumlossHabitat2.getNumber('area');
+var squareKilometers2 = squareMeters2.divide(1e6);
+print("Forest habitat loss area 2018-2019 - FNF: ",squareKilometers2);
+
+var forestlossArea3 = pixelArea.updateMask(forestloss3);
+var sumlossHabitat3 = ee.Image(forestlossArea3).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters3 = sumlossHabitat3.getNumber('area');
+var squareKilometers3 = squareMeters3.divide(1e6);
+print("Forest habitat loss area 2019-2020 - FNF: ",squareKilometers3);
+
+
+var list = ee.List([squareKilometers1, squareKilometers2, squareKilometers3]);
+
+var featureCollection = ee.FeatureCollection(list.map(function(element){
+  return ee.Feature(null,{prop:element});
+}));
+
+
+print(featureCollection);
+
+//Export.table.toDrive(ee.Element(chartArray));
+Export.table.toDrive({
+  collection: featureCollection,
+  folder: 'GEE_Folder',
+  description:'JAXAFNF_deforestation_SpiderMonkey_30m',
+  fileFormat: 'CSV'
+});
+
+
+///JAXA FNF Gain
+
+var forestgainArea1 = pixelArea.updateMask(forestgain1);
+var sumgainHabitat1 = ee.Image(forestgainArea1).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters1 = sumgainHabitat1.getNumber('area');
+var squareKilometers1 = squareMeters1.divide(1e6);
+print("Forest habitat gain area 2017-2018 - FNF: ",squareKilometers1);
+
+var forestgainArea2 = pixelArea.updateMask(forestgain2);
+var sumgainHabitat2 = ee.Image(forestgainArea2).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters2 = sumgainHabitat2.getNumber('area');
+var squareKilometers2 = squareMeters2.divide(1e6);
+print("Forest habitat gain area 2018-2019 - FNF",squareKilometers2);
+
+var forestgainArea3 = pixelArea.updateMask(forestgain3);
+var sumgainHabitat3 = ee.Image(forestgainArea3).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters3 = sumgainHabitat3.getNumber('area');
+var squareKilometers3 = squareMeters3.divide(1e6);
+print("Forest habitat gain area 2019-2020 - FNF: ",squareKilometers3);
+
+
+var list = ee.List([squareKilometers1, squareKilometers2, squareKilometers3]);
+
+var featureCollection = ee.FeatureCollection(list.map(function(element){
+  return ee.Feature(null,{prop:element});
+}));
+
+
+print(featureCollection);
+
+//Export.table.toDrive(ee.Element(chartArray));
+Export.table.toDrive({
+  collection: featureCollection,
+  folder: 'GEE_Folder',
+  description:'JAXAFNF_forestGain_SpiderMonkey_30m',
+  fileFormat: 'CSV'
+});
+
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+//ESA-C3S-LC
+var C3S_16 = ee.Image("users/saraheb3/C3S-2016"),
+    C3S_17 = ee.Image("users/saraheb3/C3S-2017"),
+    C3S_18 = ee.Image("users/saraheb3/C3S-2018"),
+    C3S_19 = ee.Image("users/saraheb3/C3S-LCCS-300m-2019"),
+    C3S_20 = ee.Image("users/saraheb3/C3S-LCCS-300m-2020");
+
+
+var pixelArea = ee.Image.pixelArea();
+
+var treeVisParam = {
+  min: 1,
+  max: 2,
+  palette: ['yellow', 'green']
+};
+
+//Identify forest areas
+//Map.addLayer(C3S_16,{}, '2016 C3S');
+var C3Shab_16 = C3S_16.mask(habitatmask);
+var gtC3S16 = C3Shab_16.gte(50);
+var ltC3s16 = C3Shab_16.lte(90);
+var Forests1 = (gtC3S16.and(ltC3s16)).add(1);
+Map.addLayer(Forests1.selfMask(),treeVisParam,"C3Sforhab_16");
+
+//Map.addLayer(C3S_17,{}, '2017 C3S');
+var C3Shab_17 = C3S_17.mask(habitatmask);
+var gtC3S17 = C3Shab_17.gte(50);
+var ltC3s17 = C3Shab_17.lte(90);
+var Forests2 = (gtC3S17.and(ltC3s17)).add(1);
+Map.addLayer(Forests2.selfMask(),treeVisParam,"C3Sforhab_17");
+
+//Map.addLayer(C3S_18,{}, '2018 C3S');
+var C3Shab_18 = C3S_18.mask(habitatmask);
+var gtC3S18 = C3Shab_18.gte(50);
+var ltC3s18 = C3Shab_18.lte(90);
+var Forests3 = (gtC3S18.and(ltC3s18)).add(1);
+Map.addLayer(Forests3.selfMask(),treeVisParam,"C3Sforhab_18");
+
+//Map.addLayer(C3S_19,{}, '2019 C3S');
+var C3Shab_19 = C3S_19.mask(habitatmask);
+var gtC3S19 = C3Shab_19.gte(50);
+var ltC3s19 = C3Shab_19.lte(90);
+var Forests4 = (gtC3S19.and(ltC3s19)).add(1);
+Map.addLayer(Forests4.selfMask(),treeVisParam,"C3Sforhab_19");
+
+//Map.addLayer(C3S_20,{}, '2020 C3S');
+var C3Shab_20 = C3S_20.mask(habitatmask);
+var gtC3S20 = C3Shab_20.gte(50);
+var ltC3s20 = C3Shab_20.lte(90);
+var Forests5 = (gtC3S20.and(ltC3s20)).add(1);
+Map.addLayer(Forests5.selfMask(),treeVisParam,"C3Sforhab_20");
+
+
+
+
+var forestDiff1 = Forests1.subtract(Forests2);
+var forestDiff2 = Forests2.subtract(Forests3);
+var forestDiff3 = Forests3.subtract(Forests4);
+var forestDiff4 = Forests4.subtract(Forests5);
+
+var treeLossVisParam = {
+  min: -1,
+  max: 1,
+  palette: ['yellow', 'green','purple']
+};
+
+Map.addLayer(forestDiff1,treeLossVisParam,'ESRI forestDiff');
+Map.addLayer(forestDiff2,treeLossVisParam,'ESRI forestDiff2');
+Map.addLayer(forestDiff3,treeLossVisParam,'ESRI forestDiff3');
+Map.addLayer(forestDiff4,treeLossVisParam,'ESRI forestDiff4');
+
+var forestloss1 = forestDiff1.eq(1);
+var forestgain1 = forestDiff1.eq(-1);
+//Map.addLayer(forestloss1.selfMask(),{palette:['#228B22']},'forestloss1');
+//Map.addLayer(forestgain1.selfMask(),{palette:['#228B22']},'forestgain1');
+
+var forestloss2 = forestDiff2.eq(1);
+var forestgain2 = forestDiff2.eq(-1);
+//Map.addLayer(forestloss2.selfMask(),{palette:['#228B22']},'forestloss2');
+//Map.addLayer(forestgain2.selfMask(),{palette:['#228B22']},'forestgain2');
+
+var forestloss3 = forestDiff3.eq(1);
+var forestgain3 = forestDiff3.eq(-1);
+//Map.addLayer(forestloss3.selfMask(),{palette:['#228B22']},'forestloss3');
+//Map.addLayer(forestgain3.selfMask(),{palette:['#228B22']},'forestgain3');
+
+var forestloss4 = forestDiff4.eq(1);
+var forestgain4 = forestDiff4.eq(-1);
+//Map.addLayer(forestloss4.selfMask(),{palette:['#228B22']},'forestloss4');
+//Map.addLayer(forestgain4.selfMask(),{palette:['#228B22']},'forestgain4');
+
+var forestlossArea1 = pixelArea.updateMask(forestloss1);
+var sumlossHabitat1 = ee.Image(forestlossArea1).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 300, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters1 = sumlossHabitat1.getNumber('area');
+var squareKilometers1 = squareMeters1.divide(1e6);
+print("Forest habitat loss area 2016-2017 - C3S: ",squareKilometers1);
+
+var forestlossArea2 = pixelArea.updateMask(forestloss2);
+var sumlossHabitat2 = ee.Image(forestlossArea2).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 300, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters2 = sumlossHabitat2.getNumber('area');
+var squareKilometers2 = squareMeters2.divide(1e6);
+print("Forest habitat loss area 2017-2018 - C3S: ",squareKilometers2);
+
+var forestlossArea3 = pixelArea.updateMask(forestloss3);
+var sumlossHabitat3 = ee.Image(forestlossArea3).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 300, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters3 = sumlossHabitat3.getNumber('area');
+var squareKilometers3 = squareMeters3.divide(1e6);
+print("Forest habitat loss area 2018-2019 - C3S: ",squareKilometers3);
+
+var forestlossArea4 = pixelArea.updateMask(forestloss4);
+var sumlossHabitat4 = ee.Image(forestlossArea4).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 300, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters4 = sumlossHabitat4.getNumber('area');
+var squareKilometers4 = squareMeters4.divide(1e6);
+print("Forest habitat loss area 2019-2020 - C3S: ",squareKilometers4);
+
+var list = ee.List([squareKilometers1, squareKilometers2, squareKilometers3, squareKilometers4]);
+
+var featureCollection = ee.FeatureCollection(list.map(function(element){
+  return ee.Feature(null,{prop:element});
+}));
+
+
+print(featureCollection);
+
+//Export.table.toDrive(ee.Element(chartArray));
+Export.table.toDrive({
+  collection: featureCollection,
+  folder: 'GEE_Folder',
+  description:'C3S_deforestation_SpiderMonkey_300m',
+  fileFormat: 'CSV'
+});
+
+
+
+
+
+
+///Gain
+
+var forestgainArea1 = pixelArea.updateMask(forestgain1);
+var sumgainHabitat1 = ee.Image(forestgainArea1).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 300, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters1 = sumgainHabitat1.getNumber('area');
+var squareKilometers1 = squareMeters1.divide(1e6);
+print("Forest habitat gain area 2016-2017 - C3S: ",squareKilometers1);
+
+var forestgainArea2 = pixelArea.updateMask(forestgain2);
+var sumgainHabitat2 = ee.Image(forestgainArea2).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 300, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters2 = sumgainHabitat2.getNumber('area');
+var squareKilometers2 = squareMeters2.divide(1e6);
+print("Forest habitat gain area 2017-2018 - C3S: ",squareKilometers2);
+
+var forestgainArea3 = pixelArea.updateMask(forestgain3);
+var sumgainHabitat3 = ee.Image(forestgainArea3).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 300, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters3 = sumgainHabitat3.getNumber('area');
+var squareKilometers3 = squareMeters3.divide(1e6);
+print("Forest habitat gain area 2018-2019 - C3S: ",squareKilometers3);
+
+var forestgainArea4 = pixelArea.updateMask(forestgain4);
+var sumgainHabitat4 = ee.Image(forestgainArea4).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 300, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters4 = sumgainHabitat4.getNumber('area');
+var squareKilometers4 = squareMeters4.divide(1e6);
+print("Forest habitat gain area 2019-2020 - C3S: ",squareKilometers4);
+
+var list = ee.List([squareKilometers1, squareKilometers2, squareKilometers3, squareKilometers4]);
+
+var featureCollection = ee.FeatureCollection(list.map(function(element){
+  return ee.Feature(null,{prop:element});
+}));
+
+
+print(featureCollection);
+
+//Export.table.toDrive(ee.Element(chartArray));
+Export.table.toDrive({
+  collection: featureCollection,
+  folder: 'GEE_Folder',
+  description:'C3S_forestGain_SpiderMonkey_300m',
+  fileFormat: 'CSV'
+});
+
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+//ESA World Cover
+
+var ESA2020 = ee.ImageCollection('ESA/WorldCover/v100').first();
+var ESA2021 = ee.ImageCollection('ESA/WorldCover/v200').first();
+
+var pixelArea = ee.Image.pixelArea();
+
+var treeVisParam = {
+  min: 1,
+  max: 2,
+  palette: ['yellow', 'green']
+};
+
+
+//Identify forest areas
+var Forests1 = ESA2020.mask(habitatmask).eq(10).add(1); 
+//Map.addLayer(Forests1.selfMask(),treeVisParam,'ESA Forests1');
+//print(Forests1);
+
+var Forests2 = ESA2021.mask(habitatmask).eq(10).add(1); 
+//Map.addLayer(Forests2.selfMask(),treeVisParam,'ESA Forests2');
+//print(Forests2);
+
+
+var forestDiff1 = Forests1.subtract(Forests2);
+
+var treeLossVisParam = {
+  min: -1,
+  max: 1,
+  palette: ['yellow', 'green','purple']
+};
+
+Map.addLayer(forestDiff1,treeLossVisParam,'ESA forestDiff');
+
+
+var forestloss1 = forestDiff1.eq(1);
+var forestgain1 = forestDiff1.eq(-1);
+//Map.addLayer(forestloss1.selfMask(),{palette:['#228B22']},'forestloss1');
+//Map.addLayer(forestgain1.selfMask(),{palette:['#228B22']},'forestgain1');
+
+
+
+var forestlossArea1 = pixelArea.updateMask(forestloss1);
+var sumlossHabitat1 = ee.Image(forestlossArea1).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 10, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters1 = sumlossHabitat1.getNumber('area');
+var squareKilometers1 = squareMeters1.divide(1e6);
+print("Forest habitat loss area 2020-2021 - ESA: ",squareKilometers1);
+var forestloss = squareKilometers1;
+
+var forestgainArea1 = pixelArea.updateMask(forestgain1);
+var sumlossHabitat1 = ee.Image(forestgainArea1).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 10, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters1 = sumlossHabitat1.getNumber('area');
+var squareKilometers1 = squareMeters1.divide(1e6);
+print("Forest habitat gain area 2020-2021 - ESA: ",squareKilometers1);
+var forestgain = squareKilometers1;
+
+var list = ee.List([forestloss]);
+
+var featureCollection = ee.FeatureCollection(list.map(function(element){
+  return ee.Feature(null,{prop:element});
+}));
+
+
+print(featureCollection);
+
+//Export.table.toDrive(ee.Element(chartArray));
+Export.table.toDrive({
+  collection: featureCollection,
+  folder: 'GEE_Folder',
+  description:'ESAWC_deforestation_SpiderMonkey_10m',
+  fileFormat: 'CSV'
+});
+
+
+var list = ee.List([forestgain]);
+
+var featureCollection = ee.FeatureCollection(list.map(function(element){
+  return ee.Feature(null,{prop:element});
+}));
+
+
+print(featureCollection);
+
+Export.table.toDrive({
+  collection: featureCollection,
+  folder: 'GEE_Folder',
+  description:'ESAWC_gain_SpiderMonkey_10m',
+  fileFormat: 'CSV'
+});
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+//ESRI Land Cover
+
+var esri_lulc10 = ee.ImageCollection("projects/sat-io/open-datasets/landcover/ESRI_Global-LULC_10m_TS");
+
+
+// Define a dictionary which will be used to make legend and visualize image on map
+var dict = {
+  "names": [
+    "Water",
+    "Trees",
+    "Flooded Vegetation",
+    "Crops",
+    "Built Area",
+    "Bare Ground",
+    "Snow/Ice",
+    "Clouds",
+    "Rangeland"
+  ],
+  "colors": [
+    "#1A5BAB",
+    "#358221",
+    "#87D19E",
+    "#FFDB5C",
+    "#ED022A",
+    "#EDE9E4",
+    "#F2FAFF",
+    "#C8C8C8",
+    "#C6AD8D"
+  ]};
+  
+  function remapper(image){
+    var remapped = image.remap([1,2,4,5,7,8,9,10,11],[1,2,3,4,5,6,7,8,9]);
+    return remapped;
+  }
+
+// This is palette has '#000000' for value 3 and 6.
+var palette = [
+    "#1A5BAB",
+    "#358221",
+    "#000000",
+    "#87D19E",
+    "#FFDB5C",
+    "#000000",
+    "#ED022A",
+    "#EDE9E4",
+    "#F2FAFF",
+    "#C8C8C8",
+    "#C6AD8D",
+  ];
+
+
+// Add image to the map
+/*Map.addLayer(ee.ImageCollection(esri_lulc10.filterDate('2017-01-01','2017-12-31').mosaic()).map(remapper), {min:1, max:9, palette:dict['colors']}, '2017 LULC 10m')
+Map.addLayer(ee.ImageCollection(esri_lulc10.filterDate('2018-01-01','2018-12-31').mosaic()).map(remapper), {min:1, max:9, palette:dict['colors']}, '2018 LULC 10m')
+Map.addLayer(ee.ImageCollection(esri_lulc10.filterDate('2019-01-01','2019-12-31').mosaic()).map(remapper), {min:1, max:9, palette:dict['colors']}, '2019 LULC 10m')
+Map.addLayer(ee.ImageCollection(esri_lulc10.filterDate('2020-01-01','2020-12-31').mosaic()).map(remapper), {min:1, max:9, palette:dict['colors']}, '2020 LULC 10m')
+Map.addLayer(ee.ImageCollection(esri_lulc10.filterDate('2021-01-01','2021-12-31').mosaic()).map(remapper), {min:1, max:9, palette:dict['colors']}, '2021 LULC 10m')
+Map.addLayer(ee.ImageCollection(esri_lulc10.filterDate('2022-01-01','2022-12-31').mosaic()).map(remapper), {min:1, max:9, palette:dict['colors']}, '2022 LULC 10m')
+*/
+var ESRI2017 = ee.ImageCollection(esri_lulc10.filterDate('2017-01-01','2017-12-31').mosaic()).map(remapper).first();
+//print(ESRI2017);
+var ESRI2018 = ee.ImageCollection(esri_lulc10.filterDate('2018-01-01','2018-12-31').mosaic()).map(remapper).first();
+//print(ESRI2018);
+var ESRI2019 = ee.ImageCollection(esri_lulc10.filterDate('2019-01-01','2019-12-31').mosaic()).map(remapper).first();
+//print(ESRI2019);
+var ESRI2020 = ee.ImageCollection(esri_lulc10.filterDate('2020-01-01','2020-12-31').mosaic()).map(remapper).first();
+//print(ESRI2020);
+var ESRI2021 = ee.ImageCollection(esri_lulc10.filterDate('2021-01-01','2021-12-31').mosaic()).map(remapper).first();
+//print(ESRI2021);
+var ESRI2022 = ee.ImageCollection(esri_lulc10.filterDate('2022-01-01','2022-12-31').mosaic()).map(remapper).first();
+//print(ESRI2022);
+
+
+var pixelArea = ee.Image.pixelArea();
+
+var treeVisParam = {
+  min: 1,
+  max: 2,
+  palette: ['yellow', 'green']
+};
+
+
+//Identify forest areas
+var Forests1 = ESRI2017.mask(habitatmask).eq(2).add(1); 
+//Map.addLayer(Forests1.selfMask(),treeVisParam,'ESRI Forests1');
+//print(Forests1);
+
+var Forests2 = ESRI2018.mask(habitatmask).eq(2).add(1); 
+//Map.addLayer(Forests2.selfMask(),treeVisParam,'ESRI Forests2');
+//print(Forests2);
+
+var Forests3 = ESRI2019.mask(habitatmask).eq(2).add(1); 
+//Map.addLayer(Forests3.selfMask(),treeVisParam,'ESRI Forests3');
+//print(Forests3);
+
+var Forests4 = ESRI2020.mask(habitatmask).eq(2).add(1); 
+//Map.addLayer(Forests4.selfMask(),treeVisParam,'ESRI Forests4');
+//print(Forests4);
+
+var Forests5 = ESRI2021.mask(habitatmask).eq(2).add(1); 
+//Map.addLayer(Forests5.selfMask(),treeVisParam,'ESRI Forests5');
+//print(Forests5);
+
+var Forests6 = ESRI2022.mask(habitatmask).eq(2).add(1); 
+//Map.addLayer(Forests6.selfMask(),treeVisParam,'ESRI Forests6');
+//print(Forests6);
+
+var forestDiff1 = Forests1.subtract(Forests2);
+var forestDiff2 = Forests2.subtract(Forests3);
+var forestDiff3 = Forests3.subtract(Forests4);
+var forestDiff4 = Forests4.subtract(Forests5);
+var forestDiff5 = Forests5.subtract(Forests6);
+
+
+var treeLossVisParam = {
+  min: -1,
+  max: 1,
+  palette: ['yellow', 'green','purple']
+};
+
+Map.addLayer(forestDiff1,treeLossVisParam,'ESRI forestDiff');
+Map.addLayer(forestDiff2,treeLossVisParam,'ESRI forestDiff2');
+Map.addLayer(forestDiff3,treeLossVisParam,'ESRI forestDiff3');
+Map.addLayer(forestDiff4,treeLossVisParam,'ESRI forestDiff4');
+Map.addLayer(forestDiff5,treeLossVisParam,'ESRI forestDiff5');
+
+var forestloss1 = forestDiff1.eq(1);
+var forestgain1 = forestDiff1.eq(-1);
+//Map.addLayer(forestloss1.selfMask(),{palette:['#228B22']},'forestloss1');
+//Map.addLayer(forestgain1.selfMask(),{palette:['#228B22']},'forestgain1');
+
+var forestloss2 = forestDiff2.eq(1);
+var forestgain2 = forestDiff2.eq(-1);
+//Map.addLayer(forestloss2.selfMask(),{palette:['#228B22']},'forestloss2');
+//Map.addLayer(forestgain2.selfMask(),{palette:['#228B22']},'forestgain2');
+
+var forestloss3 = forestDiff3.eq(1);
+var forestgain3 = forestDiff3.eq(-1);
+//Map.addLayer(forestloss3.selfMask(),{palette:['#228B22']},'forestloss3');
+//Map.addLayer(forestgain3.selfMask(),{palette:['#228B22']},'forestgain3');
+
+var forestloss4 = forestDiff4.eq(1);
+var forestgain4 = forestDiff4.eq(-1);
+//Map.addLayer(forestloss4.selfMask(),{palette:['#228B22']},'forestloss4');
+//Map.addLayer(forestgain4.selfMask(),{palette:['#228B22']},'forestgain4');
+
+var forestloss5 = forestDiff5.eq(1);
+var forestgain5 = forestDiff5.eq(-1);
+//Map.addLayer(forestloss5.selfMask(),{palette:['#228B22']},'forestloss5');
+//Map.addLayer(forestgain5.selfMask(),{palette:['#228B22']},'forestgain5');
+
+var forestlossArea1 = pixelArea.updateMask(forestloss1);
+var sumlossHabitat1 = ee.Image(forestlossArea1).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 10, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters1 = sumlossHabitat1.getNumber('area');
+var squareKilometers1 = squareMeters1.divide(1e6);
+print("Forest habitat loss area 2017-2018 - ESRI: ",squareKilometers1);
+
+var forestlossArea2 = pixelArea.updateMask(forestloss2);
+var sumlossHabitat2 = ee.Image(forestlossArea2).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 10, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters2 = sumlossHabitat2.getNumber('area');
+var squareKilometers2 = squareMeters2.divide(1e6);
+print("Forest habitat loss area 2018-2019 - ESRI: ",squareKilometers2);
+
+var forestlossArea3 = pixelArea.updateMask(forestloss3);
+var sumlossHabitat3 = ee.Image(forestlossArea3).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 10, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters3 = sumlossHabitat3.getNumber('area');
+var squareKilometers3 = squareMeters3.divide(1e6);
+print("Forest habitat loss area 2019-2020 - ESRI: ",squareKilometers3);
+
+var forestlossArea4 = pixelArea.updateMask(forestloss4);
+var sumlossHabitat4 = ee.Image(forestlossArea4).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 10, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters4 = sumlossHabitat4.getNumber('area');
+var squareKilometers4 = squareMeters4.divide(1e6);
+print("Forest habitat loss area 2020-2021 - ESRI: ",squareKilometers4);
+
+var forestlossArea5 = pixelArea.updateMask(forestloss5);
+var sumlossHabitat5 = ee.Image(forestlossArea5).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 10, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters5 = sumlossHabitat5.getNumber('area');
+var squareKilometers5 = squareMeters5.divide(1e6);
+print("Forest habitat loss area 2021-2022 - ESRI: ",squareKilometers5);
+
+var list = ee.List([squareKilometers1, squareKilometers2, squareKilometers3, squareKilometers4, squareKilometers5]);
+
+var featureCollection = ee.FeatureCollection(list.map(function(element){
+  return ee.Feature(null,{prop:element});
+}));
+
+
+print(featureCollection);
+
+//Export.table.toDrive(ee.Element(chartArray));
+Export.table.toDrive({
+  collection: featureCollection,
+  folder: 'GEE_Folder',
+  description:'ESRI_deforestation_SpiderMonkey_10m',
+  fileFormat: 'CSV'
+});
+
+
+
+
+///Gain
+
+var forestgainArea1 = pixelArea.updateMask(forestgain1);
+var sumgainHabitat1 = ee.Image(forestgainArea1).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 10, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters1 = sumgainHabitat1.getNumber('area');
+var squareKilometers1 = squareMeters1.divide(1e6);
+print("Forest habitat gain area 2017-2018 - ESRI: ",squareKilometers1);
+
+var forestgainArea2 = pixelArea.updateMask(forestgain2);
+var sumgainHabitat2 = ee.Image(forestgainArea2).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 10, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters2 = sumgainHabitat2.getNumber('area');
+var squareKilometers2 = squareMeters2.divide(1e6);
+print("Forest habitat gain area 2018-2019 - ESRI",squareKilometers2);
+
+var forestgainArea3 = pixelArea.updateMask(forestgain3);
+var sumgainHabitat3 = ee.Image(forestgainArea3).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 10, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters3 = sumgainHabitat3.getNumber('area');
+var squareKilometers3 = squareMeters3.divide(1e6);
+print("Forest habitat gain area 2019-2020 - ESRI: ",squareKilometers3);
+
+var forestgainArea4 = pixelArea.updateMask(forestgain4);
+var sumgainHabitat4 = ee.Image(forestgainArea4).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 10, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters4 = sumgainHabitat4.getNumber('area');
+var squareKilometers4 = squareMeters4.divide(1e6);
+print("Forest habitat gain area 2020-2021 - ESRI: ",squareKilometers4);
+
+var forestgainArea5 = pixelArea.updateMask(forestgain5);
+var sumgainHabitat5 = ee.Image(forestgainArea5).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 10, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters5 = sumgainHabitat5.getNumber('area');
+var squareKilometers5 = squareMeters5.divide(1e6);
+print("Forest habitat gain area 2021-2022 - ESRI: ",squareKilometers5);
+
+var list = ee.List([squareKilometers1, squareKilometers2, squareKilometers3, squareKilometers4, squareKilometers5]);
+
+var featureCollection = ee.FeatureCollection(list.map(function(element){
+  return ee.Feature(null,{prop:element});
+}));
+
+
+print(featureCollection);
+
+//Export.table.toDrive(ee.Element(chartArray));
+Export.table.toDrive({
+  collection: featureCollection,
+  folder: 'GEE_Folder',
+  description:'ESRI_forestGain_SpiderMonkey_10m',
+  fileFormat: 'CSV'
+});
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+//Hansen Global Forest Change
+
+var year1 = 15;
+var year2 = 16;
+var year3 = 17;
+var year4 = 18;
+var year5 = 19;
+var year6 = 20;
+var year7 = 21;
+var year8 = 22;
+
+var pixelArea = ee.Image.pixelArea();
+
+var hansen = ee.Image('UMD/hansen/global_forest_change_2021_v1_9').select('lossyear');
+/*var treeCoverVisParam = {
+  bands: ['treecover2000'],
+  min: 0,
+  max: 100,
+  palette: ['black', 'green']
+};
+var hansenforest_hab = hansen;//.mask(habitatmask);
+Map.addLayer(hansenforest_hab, treeCoverVisParam, 'tree cover');*/
+
+var treeLossVisParam = {
+  //bands: ['lossyear'],
+  min: 0,
+  max: 22,
+  palette: ['yellow', 'red']
+};
+var hansenloss = hansen.selfMask();
+Map.addLayer(hansenloss, treeLossVisParam, 'tree loss year');
+
+hansen = hansen.mask(habitatmask);
+
+var forestloss1 = hansen.eq(year1);
+//Map.addLayer(forestloss1.selfMask(),{palette:['#228B22']},'forestloss1');
+
+var forestloss2 = hansen.eq(year2);
+//Map.addLayer(forestloss2.selfMask(),{palette:['#228B22']},'forestloss2');
+
+var forestloss3 = hansen.eq(year3);
+//Map.addLayer(forestloss3.selfMask(),{palette:['#228B22']},'forestloss3');
+
+var forestloss4 = hansen.eq(year4);
+//Map.addLayer(forestloss4.selfMask(),{palette:['#228B22']},'forestloss4');
+
+var forestloss5 = hansen.eq(year5);
+//Map.addLayer(forestloss5.selfMask(),{palette:['#228B22']},'forestloss5');
+
+var forestloss6 = hansen.eq(year6);
+//Map.addLayer(forestloss6.selfMask(),{palette:['#228B22']},'forestloss6');
+
+var forestloss7 = hansen.eq(year7);
+//Map.addLayer(forestloss7.selfMask(),{palette:['#228B22']},'forestloss7');
+
+var forestloss8 = hansen.eq(year8);
+//Map.addLayer(forestloss7.selfMask(),{palette:['#228B22']},'forestloss7');
+
+
+var forestlossArea1 = pixelArea.updateMask(forestloss1);
+var sumlossHabitat1 = ee.Image(forestlossArea1).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters1 = sumlossHabitat1.getNumber('area');
+var squareKilometers1 = squareMeters1.divide(1e6);
+print("Forest habitat loss area "+year1+" - Hansen: ",squareKilometers1);
+
+var forestlossArea2 = pixelArea.updateMask(forestloss2);
+var sumlossHabitat2 = ee.Image(forestlossArea2).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters2 = sumlossHabitat2.getNumber('area');
+var squareKilometers2 = squareMeters2.divide(1e6);
+print("Forest habitat loss area "+year2+" - Hansen: ",squareKilometers2);
+
+var forestlossArea3 = pixelArea.updateMask(forestloss3);
+var sumlossHabitat3 = ee.Image(forestlossArea3).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters3 = sumlossHabitat3.getNumber('area');
+var squareKilometers3 = squareMeters3.divide(1e6);
+print("Forest habitat loss area "+year3+" - Hansen: ",squareKilometers3);
+
+var forestlossArea4 = pixelArea.updateMask(forestloss4);
+var sumlossHabitat4 = ee.Image(forestlossArea4).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters4 = sumlossHabitat4.getNumber('area');
+var squareKilometers4 = squareMeters4.divide(1e6);
+print("Forest habitat loss area "+year4+" - Hansen: ",squareKilometers4);
+
+var forestlossArea5 = pixelArea.updateMask(forestloss5);
+var sumlossHabitat5 = ee.Image(forestlossArea5).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters5 = sumlossHabitat5.getNumber('area');
+var squareKilometers5 = squareMeters5.divide(1e6);
+print("Forest habitat loss area "+year5+" - Hansen: ",squareKilometers5);
+
+var forestlossArea6 = pixelArea.updateMask(forestloss6);
+var sumlossHabitat6 = ee.Image(forestlossArea6).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters6 = sumlossHabitat6.getNumber('area');
+var squareKilometers6 = squareMeters6.divide(1e6);
+print("Forest habitat loss area "+year6+" - Hansen: ",squareKilometers6);
+
+var forestlossArea7 = pixelArea.updateMask(forestloss7);
+var sumlossHabitat7 = ee.Image(forestlossArea7).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters7 = sumlossHabitat7.getNumber('area');
+var squareKilometers7 = squareMeters7.divide(1e6);
+print("Forest habitat loss area "+year7+" - Hansen: ",squareKilometers7);
+
+
+
+var forestlossArea8 = pixelArea.updateMask(forestloss8);
+var sumlossHabitat8 = ee.Image(forestlossArea8).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters8 = sumlossHabitat8.getNumber('area');
+var squareKilometers8 = squareMeters8.divide(1e6);
+print("Forest habitat loss area "+year8+" - Hansen: ",squareKilometers8);
+
+
+
+var list = ee.List([squareKilometers1, squareKilometers2, squareKilometers3, squareKilometers4, squareKilometers5, squareKilometers6, squareKilometers7, squareKilometers8]);
+//var list = ee.List([squareKilometers8]);
+
+var featureCollection = ee.FeatureCollection(list.map(function(element){
+  return ee.Feature(null,{prop:element});
+}));
+
+
+print(featureCollection);
+
+//Export.table.toDrive(ee.Element(chartArray));
+Export.table.toDrive({
+  collection: featureCollection,
+  folder: 'GEE_Folder',
+  description:'Hansen_deforestation_SpiderCat22',
+  fileFormat: 'CSV'
+});
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+//Vancutsem Tropical Moist Forest Change
+
+var Vancutsem1 = ee.Image("users/saraheb3/Vancutsem_forestchanges_2015_to_2016"),
+    Vancutsem2 = ee.Image("users/saraheb3/Vancutsem_forestchanges_2016_to_2017"),
+    Vancutsem3 = ee.Image("users/saraheb3/Vancutsem_forestchanges_2017_to_2018"),
+    Vancutsem4 = ee.Image("users/saraheb3/Vancutsem_forestchanges_2018_to_2019"),
+    Vancutsem5 = ee.Image("users/saraheb3/Vancutsem_forestchanges_2019_to_2020"),
+    Vancutsem6 = ee.Image("users/saraheb3/Vancutsem_forestchanges_2020_to_2021");
+
+
+var pixelArea = ee.Image.pixelArea();
+
+var treeVisParam = {
+  min: 1,
+  max: 4,
+  palette: ['yellow', 'green']
+};
+/*
+Map.addLayer(Vancutsem1.selfMask(),treeVisParam,"Vancutsem 2015-2016");
+Map.addLayer(Vancutsem2.selfMask(),treeVisParam,"Vancutsem 2016-2017");
+Map.addLayer(Vancutsem3.selfMask(),treeVisParam,"Vancutsem 2017-2018");
+Map.addLayer(Vancutsem4.selfMask(),treeVisParam,"Vancutsem 2018-2019");
+*/
+//Map.addLayer(Vancutsem5.selfMask(),treeVisParam,"Vancutsem 2019-2020");
+//Map.addLayer(Vancutsem5.selfMask(),treeVisParam,"Vancutsem 2020-2021");
+
+
+var forestloss1 = Vancutsem1.eq(2).mask(habitatmask);
+var degraded1 = Vancutsem1.eq(1).mask(habitatmask);
+var forestgain1 = Vancutsem1.gte(3).mask(habitatmask);
+
+var forestloss2 = Vancutsem2.eq(2).mask(habitatmask);
+var degraded2 = Vancutsem2.eq(1).mask(habitatmask);
+var forestgain2 = Vancutsem2.gte(3).mask(habitatmask);
+
+var forestloss3 = Vancutsem3.eq(2).mask(habitatmask);
+var degraded3 = Vancutsem3.eq(1).mask(habitatmask);
+var forestgain3 = Vancutsem3.gte(3).mask(habitatmask);
+
+var forestloss4 = Vancutsem4.eq(2).mask(habitatmask);
+var degraded4 = Vancutsem4.eq(1).mask(habitatmask);
+var forestgain4 = Vancutsem4.gte(3).mask(habitatmask);
+
+var forestloss5 = Vancutsem5.eq(2).mask(habitatmask);
+var degraded5 = Vancutsem5.eq(1).mask(habitatmask);
+var forestgain5 = Vancutsem5.gte(3).mask(habitatmask);
+
+var forestloss6 = Vancutsem6.eq(2).mask(habitatmask);
+var degraded6 = Vancutsem6.eq(1).mask(habitatmask);
+var forestgain6 = Vancutsem6.gte(3).mask(habitatmask);
+
+Map.addLayer(forestgain3.selfMask(),treeVisParam,"Vancutsem gain 2019-2020");
+Map.addLayer(forestgain4.selfMask(),treeVisParam,"Vancutsem gain 2020-2021");
+
+var forestloss_degraded1 = forestloss1.or(degraded1);
+var forestloss_degraded2 = forestloss2.or(degraded2);
+var forestloss_degraded3 = forestloss3.or(degraded3);
+var forestloss_degraded4 = forestloss4.or(degraded4);
+var forestloss_degraded5 = forestloss5.or(degraded5);
+var forestloss_degraded6 = forestloss6.or(degraded6);
+
+//Map.addLayer(forestloss1.selfMask(),treeVisParam,"Vancutsem forestloss1 2015-2016");
+//Map.addLayer(forestloss_degraded1.selfMask(),treeVisParam,"Vancutsem forestloss_degraded1 2015-2016");
+
+
+Map.addLayer(forestloss1.selfMask(),treeVisParam,"Vancutsem forestloss1 2015-2016");
+Map.addLayer(forestloss2.selfMask(),treeVisParam,"Vancutsem 2016-2017");
+Map.addLayer(forestloss3.selfMask(),treeVisParam,"Vancutsem 2017-2018");
+Map.addLayer(forestloss4.selfMask(),treeVisParam,"Vancutsem 2018-2019");
+Map.addLayer(forestloss5.selfMask(),treeVisParam,"Vancutsem 2019-2020");
+
+
+var forestlossArea1 = pixelArea.updateMask(forestloss1);
+var sumlossHabitat1 = ee.Image(forestlossArea1).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters1 = sumlossHabitat1.getNumber('area');
+var squareKilometers1 = squareMeters1.divide(1e6);
+print("Forest habitat loss area 2015-2016 - Vancutsem: ",squareKilometers1);
+
+var forestlossArea2 = pixelArea.updateMask(forestloss2);
+var sumlossHabitat2 = ee.Image(forestlossArea2).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters2 = sumlossHabitat2.getNumber('area');
+var squareKilometers2 = squareMeters2.divide(1e6);
+print("Forest habitat loss area 2016-2017 - Vancutsem: ",squareKilometers2);
+
+var forestlossArea3 = pixelArea.updateMask(forestloss3);
+var sumlossHabitat3 = ee.Image(forestlossArea3).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters3 = sumlossHabitat3.getNumber('area');
+var squareKilometers3 = squareMeters3.divide(1e6);
+print("Forest habitat loss area 2017-2018 - Vancutsem: ",squareKilometers3);
+
+var forestlossArea4 = pixelArea.updateMask(forestloss4);
+var sumlossHabitat4 = ee.Image(forestlossArea4).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters4 = sumlossHabitat4.getNumber('area');
+var squareKilometers4 = squareMeters4.divide(1e6);
+print("Forest habitat loss area 2018-2019 - Vancutsem: ",squareKilometers4);
+
+var forestlossArea5 = pixelArea.updateMask(forestloss5);
+var sumlossHabitat5 = ee.Image(forestlossArea5).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters5 = sumlossHabitat5.getNumber('area');
+var squareKilometers5 = squareMeters5.divide(1e6);
+print("Forest habitat loss area 2019-2020 - Vancutsem: ",squareKilometers5);
+
+var forestlossArea6 = pixelArea.updateMask(forestloss6);
+var sumlossHabitat6 = ee.Image(forestlossArea6).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters6 = sumlossHabitat6.getNumber('area');
+var squareKilometers6 = squareMeters6.divide(1e6);
+print("Forest habitat loss area 2020-2021 - Vancutsem: ",squareKilometers6);
+
+
+var list = ee.List([squareKilometers1, squareKilometers2, squareKilometers3, squareKilometers4, squareKilometers5, squareKilometers6]);
+
+var featureCollection = ee.FeatureCollection(list.map(function(element){
+  return ee.Feature(null,{prop:element});
+}));
+
+
+print(featureCollection);
+
+//Export.table.toDrive(ee.Element(chartArray));
+Export.table.toDrive({
+  collection: featureCollection,
+  folder: 'GEE_Folder',
+  description:'Vancutsem_deforestation_SpiderMonkey_30m',
+  fileFormat: 'CSV'
+});
+
+
+
+
+///Gain
+
+var forestgainArea1 = pixelArea.updateMask(forestgain1);
+var sumgainHabitat1 = ee.Image(forestgainArea1).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters1 = sumgainHabitat1.getNumber('area');
+var squareKilometers1 = squareMeters1.divide(1e6);
+print("Forest habitat gain area 2015-2016 - Vancutsem: ",squareKilometers1);
+
+var forestgainArea2 = pixelArea.updateMask(forestgain2);
+var sumgainHabitat2 = ee.Image(forestgainArea2).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters2 = sumgainHabitat2.getNumber('area');
+var squareKilometers2 = squareMeters2.divide(1e6);
+print("Forest habitat gain area 2016-2017 - Vancutsem",squareKilometers2);
+
+var forestgainArea3 = pixelArea.updateMask(forestgain3);
+var sumgainHabitat3 = ee.Image(forestgainArea3).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters3 = sumgainHabitat3.getNumber('area');
+var squareKilometers3 = squareMeters3.divide(1e6);
+print("Forest habitat gain area 2017-2018 - Vancutsem: ",squareKilometers3);
+
+
+
+var forestgainArea4 = pixelArea.updateMask(forestgain4);
+var sumgainHabitat4 = ee.Image(forestgainArea4).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters4 = sumgainHabitat4.getNumber('area');
+var squareKilometers4 = squareMeters4.divide(1e6);
+print("Forest habitat gain area 2018-2019 - Vancutsem: ",squareKilometers4);
+
+var forestgainArea5 = pixelArea.updateMask(forestgain5);
+var sumgainHabitat5 = ee.Image(forestgainArea5).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters5 = sumgainHabitat5.getNumber('area');
+var squareKilometers5 = squareMeters5.divide(1e6);
+print("Forest habitat gain area 2019-2020 - Vancutsem",squareKilometers5);
+
+
+var forestgainArea6 = pixelArea.updateMask(forestgain6);
+var sumgainHabitat6 = ee.Image(forestgainArea6).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters6 = sumgainHabitat6.getNumber('area');
+var squareKilometers6 = squareMeters6.divide(1e6);
+print("Forest habitat gain area 2020-2021 - Vancutsem: ",squareKilometers6);
+
+
+var list = ee.List([squareKilometers1, squareKilometers2, squareKilometers3, squareKilometers4, squareKilometers5, squareKilometers6]);
+
+var featureCollection = ee.FeatureCollection(list.map(function(element){
+  return ee.Feature(null,{prop:element});
+}));
+
+
+print(featureCollection);
+
+//Export.table.toDrive(ee.Element(chartArray));
+Export.table.toDrive({
+  collection: featureCollection,
+  folder: 'GEE_Folder',
+  description:'Vancutsem_forestGain_SpiderMonkey_30m',
+  fileFormat: 'CSV'
+});
+
+
+
+//Forest loss + degraded
+
+var forestlossArea1 = pixelArea.updateMask(forestloss_degraded1);
+var sumlossHabitat1 = ee.Image(forestlossArea1).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters1 = sumlossHabitat1.getNumber('area');
+var squareKilometers1 = squareMeters1.divide(1e6);
+print("Forest habitat loss area 2015-2016 - Vancutsem: ",squareKilometers1);
+
+var forestlossArea2 = pixelArea.updateMask(forestloss_degraded2);
+var sumlossHabitat2 = ee.Image(forestlossArea2).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters2 = sumlossHabitat2.getNumber('area');
+var squareKilometers2 = squareMeters2.divide(1e6);
+print("Forest habitat loss area 2016-2017 - Vancutsem: ",squareKilometers2);
+
+var forestlossArea3 = pixelArea.updateMask(forestloss_degraded3);
+var sumlossHabitat3 = ee.Image(forestlossArea3).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters3 = sumlossHabitat3.getNumber('area');
+var squareKilometers3 = squareMeters3.divide(1e6);
+print("Forest habitat loss area 2017-2018 - Vancutsem: ",squareKilometers3);
+
+var forestlossArea4 = pixelArea.updateMask(forestloss_degraded4);
+var sumlossHabitat4 = ee.Image(forestlossArea4).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters4 = sumlossHabitat4.getNumber('area');
+var squareKilometers4 = squareMeters4.divide(1e6);
+print("Forest habitat loss area 2018-2019 - Vancutsem: ",squareKilometers4);
+
+var forestlossArea5 = pixelArea.updateMask(forestloss_degraded5);
+var sumlossHabitat5 = ee.Image(forestlossArea5).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters5 = sumlossHabitat5.getNumber('area');
+var squareKilometers5 = squareMeters5.divide(1e6);
+print("Forest habitat loss area 2019-2020 - Vancutsem: ",squareKilometers5);
+
+var forestlossArea6 = pixelArea.updateMask(forestloss_degraded6);
+var sumlossHabitat6 = ee.Image(forestlossArea6).reduceRegion({ 
+    geometry: geom,
+    reducer: ee.Reducer.sum(),
+    scale: 30, //use data layer resolution (~93m) 
+    tileScale:16, //set to 16 to avoid processing limitations
+    maxPixels:1e13,
+    //bestEffort: true
+});
+
+var squareMeters6 = sumlossHabitat6.getNumber('area');
+var squareKilometers6 = squareMeters6.divide(1e6);
+print("Forest habitat loss area 2020-2021 - Vancutsem: ",squareKilometers6);
+
+
+var list = ee.List([squareKilometers1, squareKilometers2, squareKilometers3, squareKilometers4, squareKilometers5, squareKilometers6]);
+
+var featureCollection = ee.FeatureCollection(list.map(function(element){
+  return ee.Feature(null,{prop:element});
+}));
+
+
+print(featureCollection);
+
+//Export.table.toDrive(ee.Element(chartArray));
+Export.table.toDrive({
+  collection: featureCollection,
+  folder: 'GEE_Folder',
+  description:'Vancutsem_deforestation_degradation_SpiderMonkey_30m',
+  fileFormat: 'CSV'
+});
