@@ -1,5 +1,6 @@
 //Global Forest Cover and Forest Cover Change Datasets
-//Code: Compares estimates of forest cover change between Hansen and Vancutsem change datasets within IUCN Red List Species Range; Generates Figure 6 and Supplemental 
+//Code: Compares estimates of forest cover change between Hansen and Vancutsem change datasets within IUCN Red List Species Range; 
+//Generates Figure 6 and Supplemental Table S9-S10 and Figure S6 
 //Citation: [cite]
 //Author: Sarah Castle
 
