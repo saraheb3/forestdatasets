@@ -1,0 +1,547 @@
+//Global Forest Cover and Forest Cover Change Datasets
+//Code: Estimates biomass carbon stored in forests for different global forest cover datasets for a specific dataset
+//Citation: [cite]
+//Author: Sarah Castle
+
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+var country = 'KEN'; //country code //Select country of analysis using country code. Here, Kenya. 
+//See https://www.worldpop.org/resources/docs/national_boundaries/global-input-population-data-summary.xlsx for country codes.
+
+var year = 2019; //Select year for analysis. Here, 2019 for latest data.
+
+//Use administrative boundaries defined by WorldPop dataset to be consistent with forest-proximate people in poverty analysis
+var populationdata = ee.ImageCollection("WorldPop/GP/100m/pop")
+  .filter(ee.Filter.equals('year', year)) //Select year for analysis. Here, 2019 for latest data.
+  .filter(ee.Filter.equals('country', country))
+  .select('population');
+
+var populationdataimg = populationdata.reduce({reducer: ee.Reducer.median()});
+var populationdata1 = populationdataimg.add(1);
+//country geometry
+var geom = populationdata.geometry();
+
+//--------------------------------------------------------------------------------------
+//Above and below ground carbon density
+//Above ground carbon density
+var AGB = ee.ImageCollection("NASA/ORNL/biomass_carbon_density/v1").select('agb').first();
+
+var visualization = {
+  min: -50.0,
+  max: 80.0,
+  palette: ['d9f0a3', 'addd8e', '78c679', '41ab5d', '238443', '005a32']
+};
+
+Map.addLayer(AGB, visualization, "Aboveground biomass carbon");
+
+//Below ground carbon density
+var BGB = ee.ImageCollection("NASA/ORNL/biomass_carbon_density/v1").select('bgb').first();
+print(BGB);
+var visualization = {
+  min: -50.0,
+  max: 80.0,
+  palette: ['d9f0a3', 'addd8e', '78c679', '41ab5d', '238443', '005a32']
+};
+
+Map.addLayer(BGB, visualization, "Belowground biomass carbon");
+
+//Above and below ground carbon density total
+var totalBiomass = AGB.add(BGB);
+Map.addLayer(totalBiomass, visualization, "total biomass carbon");
+
+var sumBiomass = ee.Image(totalBiomass).reduceRegions({ //generate sum of total biomass carbon
+  collection: geom,
+  reducer: ee.Reducer.sum(),
+  scale: 300, //use data layer resolution
+  crs: 'EPSG:4326', // world wide crs 
+  tileScale:16 //set to 16 to avoid processing limitations
+});
+
+sumBiomass = sumBiomass.aggregate_array('sum').get(0);
+
+//Print total biomass value for country in 2010
+print("Total biomass 2010: ",sumBiomass);
+
+//-----------------------------------------------------------------------------------------//
+
+//Copernicus global land cover
+//2015-2019
+//100 m
+var dataset1 = ee.Image("COPERNICUS/Landcover/100m/Proba-V-C3/Global/"+year)
+.select('discrete_classification');
+
+dataset1 = dataset1.mask(populationdata1);
+
+//Identify forest and non-forest areas 
+var gtForests = dataset1.gt(110); 
+var ltForests = dataset1.lt(199); 
+var Forests = ltForests.and(gtForests);
+//Map.addLayer(Forests.selfMask(),{palette:['#228B22']},'Copernicus Forests');
+//print(Forests);
+
+var Copernicus_totalBiomass = totalBiomass.mask(Forests);
+Map.addLayer(Copernicus_totalBiomass,visualization,'Copernicus_totalBiomass');
+
+
+var Copernicus_sumBiomass = ee.Image(Copernicus_totalBiomass).reduceRegions({ //generate sum of biomass carbon for country
+  collection: geom,
+  reducer: ee.Reducer.sum(),
+  scale: 300, //use biomass data layer resolution
+  crs: 'EPSG:4326', // world wide crs 
+  tileScale:16 //set to 16 to avoid processing limitations
+});
+
+Copernicus_sumBiomass = Copernicus_sumBiomass.aggregate_array('sum').get(0);
+
+//Print biomass value for country
+print("Forest biomass "+year+" - Copernicus: ",Copernicus_sumBiomass);
+
+//-----------------------------------------------------------------------------------------//
+
+//MODIS Land Cover Type
+//2001-2020
+//500 m
+//**LC_Type 1
+var dataset = ee.ImageCollection('MODIS/006/MCD12Q1');
+var igbpLandCover = dataset.select('LC_Type1').filterDate(year+'-01-01', year+'-12-31');
+
+igbpLandCover = igbpLandCover.first().mask(populationdata1);
+
+var Forests2 = igbpLandCover.lt(6); //Excludes savannahs 
+//Map.addLayer(Forests2.selfMask(),{palette:['#228B22']},'MODIS IGBP Forests');
+
+var MODIS_IGBP_totalBiomass = totalBiomass.mask(Forests2);
+Map.addLayer(MODIS_IGBP_totalBiomass,visualization,'MODIS_IGBP_totalBiomass');
+
+
+var MODIS_IGBP_sumBiomass = ee.Image(MODIS_IGBP_totalBiomass).reduceRegions({ //generate sum of biomass carbon for country
+  collection: geom,
+  reducer: ee.Reducer.sum(),
+  scale: 300, //use data layer resolution
+  crs: 'EPSG:4326', // world wide crs 
+  tileScale:16 //set to 16 to avoid processing limitations
+});
+
+MODIS_IGBP_sumBiomass = MODIS_IGBP_sumBiomass.aggregate_array('sum').get(0);
+
+//Print biomass value for country
+print("Forest biomass "+year+" - MODIS-IGBP: ",MODIS_IGBP_sumBiomass);
+
+//-------------------
+//**LC_Prop 1 FAO
+var dataset = ee.ImageCollection('MODIS/006/MCD12Q1');
+var FAOLandCover = dataset.select('LC_Prop1').filterDate(year+'-01-01', year+'-12-31');
+
+var gtFAO = FAOLandCover.first().gt(10);
+var ltFAO = FAOLandCover.first().lt(23);
+var Forests7 = gtFAO.and(ltFAO);
+Forests7 = Forests7.mask(populationdata1);
+//Map.addLayer(Forests7.selfMask(),{palette:['#228B22']},'MODIS FAO Forests Land Use');
+
+var MODIS_FAO_totalBiomass = totalBiomass.mask(Forests7);
+Map.addLayer(MODIS_FAO_totalBiomass,visualization,'MODIS_FAO_totalBiomass');
+
+var MODIS_FAO_sumBiomass = ee.Image(MODIS_FAO_totalBiomass).reduceRegions({ //generate sum of biomass carbon for country
+  collection: geom,
+  reducer: ee.Reducer.sum(),
+  scale: 300, //use data layer resolution
+  crs: 'EPSG:4326', // world wide crs 
+  tileScale:16 //set to 16 to avoid processing limitations
+});
+
+MODIS_FAO_sumBiomass = MODIS_FAO_sumBiomass.aggregate_array('sum').get(0);
+
+//Print biomass value for country
+print("Forest biomass "+year+" - MODIS-FAO2: ",MODIS_FAO_sumBiomass);
+
+//-----------------------------------------------------------------------------------------//
+//ESRI 2020 Land Cover
+
+var esri_lulc2020= ee.ImageCollection("projects/sat-io/open-datasets/landcover/ESRI_Global-LULC_10m").mosaic();
+
+esri_lulc2020 = esri_lulc2020.mask(populationdata1);
+
+var Forests10 = esri_lulc2020.eq(2);
+
+//ESRI 2017-2022 Land Cover
+var esri_lulc_ts= ee.ImageCollection("projects/sat-io/open-datasets/landcover/ESRI_Global-LULC_10m_TS").filterDate(year+'-01-01', year+'-12-31').mosaic();
+esri_lulc_ts = esri_lulc_ts.mask(populationdata1);
+
+print(esri_lulc_ts);
+var Forests10_ts = esri_lulc_ts.eq(2);
+
+//Map.addLayer(Forests10.selfMask(),{palette:['#228B22']}, 'ESRI Forests');
+
+var ESRI_totalBiomass = totalBiomass.mask(Forests10);
+Map.addLayer(ESRI_totalBiomass,visualization,'ESRI_totalBiomass2020');
+
+var ESRI_sumBiomass = ee.Image(ESRI_totalBiomass).reduceRegions({ //generate sum of biomass carbon for country
+  collection: geom,
+  reducer: ee.Reducer.sum(),
+  scale: 300, //use data layer resolution
+  crs: 'EPSG:4326', // world wide crs 
+  tileScale:16 //set to 16 to avoid processing limitations
+});
+
+ESRI_sumBiomass = ESRI_sumBiomass.aggregate_array('sum').get(0);
+
+//Print biomass value for country
+print("Forest biomass 2020 - ESRI: ",ESRI_sumBiomass);
+
+var ESRI_totalBiomass_ts = totalBiomass.mask(Forests10_ts);
+Map.addLayer(ESRI_totalBiomass_ts,visualization,'ESRI_totalBiomass'+year);
+
+var ESRI_sumBiomass_ts = ee.Image(ESRI_totalBiomass_ts).reduceRegions({ //generate sum of biomass carbon for country
+  collection: geom,
+  reducer: ee.Reducer.sum(),
+  scale: 300, //use data layer resolution
+  crs: 'EPSG:4326', // world wide crs 
+  tileScale:16 //set to 16 to avoid processing limitations
+});
+
+ESRI_sumBiomass_ts = ESRI_sumBiomass_ts.aggregate_array('sum').get(0);
+
+//Print biomass value for country
+print("Forest biomass "+year+" - ESRI: ",ESRI_sumBiomass_ts);
+
+//-----------------------------------------------------------------------------------------//
+
+//ESA WorldCover 2020
+
+var ESA_WC = ee.ImageCollection("ESA/WorldCover/v100").first().select('Map');
+
+ESA_WC = ESA_WC.mask(populationdata1);
+
+
+var Forests11 = ESA_WC.eq(10);
+//Map.addLayer(Forests11.selfMask(),{palette:['#228B22']}, "ESA WorldCover Forests");
+
+var ESA_WC_totalBiomass = totalBiomass.mask(Forests11);
+Map.addLayer(ESA_WC_totalBiomass,visualization,'ESA_WC_totalBiomass');
+
+var ESA_WC_sumBiomass = ee.Image(ESA_WC_totalBiomass).reduceRegions({ //generate sum of biomass carbon for country
+  collection: geom,
+  reducer: ee.Reducer.sum(),
+  scale: 300, //use data layer resolution
+  crs: 'EPSG:4326', // world wide crs 
+  tileScale:16 //set to 16 to avoid processing limitations
+});
+
+ESA_WC_sumBiomass = ESA_WC_sumBiomass.aggregate_array('sum').get(0);
+
+//Print biomass value for country
+print("Forest biomass 2020 - ESA WorldCover: ",ESA_WC_sumBiomass);
+
+//-----------------------------------------------------------------------------------------//
+//PALSAR/PALSAR-2 Forest/Non-forest
+
+var palsar = ee.ImageCollection('JAXA/ALOS/PALSAR/YEARLY/FNF4')
+                  .filterDate(year+'-01-01', year+'-12-31');
+var forestNonForest = palsar.select('fnf');
+
+forestNonForest = forestNonForest.first().mask(populationdata1);
+
+var Forests12 = forestNonForest.lte(2);
+//Map.addLayer(Forests12.selfMask(),{palette:['#228B22']}, 'PALSAR Forest/Non-Forest');
+
+var FNF_totalBiomass = totalBiomass.mask(Forests12);
+Map.addLayer(FNF_totalBiomass,visualization,'FNF_totalBiomass');
+
+var FNF_sumBiomass = ee.Image(FNF_totalBiomass).reduceRegions({ //generate sum of biomass carbon for country
+  collection: geom,
+  reducer: ee.Reducer.sum(),
+  scale: 300, //use data layer resolution
+  crs: 'EPSG:4326', // world wide crs 
+  tileScale:16 //set to 16 to avoid processing limitations
+});
+
+FNF_sumBiomass = FNF_sumBiomass.aggregate_array('sum').get(0);
+
+//Print biomass value for country
+print("Forest biomass "+year+" - FNF: ",FNF_sumBiomass);
+
+//Earlier version of JAXA FNF dataset
+/*
+var dataset = ee.ImageCollection('JAXA/ALOS/PALSAR/YEARLY/FNF')
+                  .filterDate(year+'-01-01', year+'-12-31');
+var forestNonForest = dataset.select('fnf');
+
+forestNonForest = forestNonForest.first().mask(populationdata1);
+
+var Forests12 = forestNonForest.lte(1);
+//Map.addLayer(Forests12.selfMask(),{palette:['#228B22']}, 'PALSAR Forest/Non-Forest');
+
+var FNF_totalBiomass = totalBiomass.mask(Forests12);
+Map.addLayer(FNF_totalBiomass,visualization,'FNF_totalBiomass');
+
+var FNF_sumBiomass = ee.Image(FNF_totalBiomass).reduceRegions({ //generate sum of biomass carbon for country
+  collection: geom,
+  reducer: ee.Reducer.sum(),
+  scale: 300, //use data layer resolution (~93m) 
+  crs: 'EPSG:4326', // world wide crs 
+  tileScale:16 //set to 16 to avoid processing limitations
+});
+
+FNF_sumBiomass = FNF_sumBiomass.aggregate_array('sum').get(0);
+
+//Print FPP value for country
+print("Forest biomass "+year+" - FNF: ",FNF_sumBiomass);
+*/
+//-----------------------------------------------------------------------------------------//
+
+//Copernicus Climate Change Service global Land Cover (C3S-LC)
+//Map.addLayer(C3S_LLCS_2020, {},"C3S 2020");
+//print(C3S_LLCS_2020);
+var C3S_LLCS_2019 = ee.Image("users/saraheb3/C3S-LCCS-300m-2019"),
+    C3S_LLCS_2020 = ee.Image("users/saraheb3/C3S-LCCS-300m-2020");
+    
+C3S_LLCS_2020 = C3S_LLCS_2020.mask(populationdata1);
+
+var gtC3S = C3S_LLCS_2020.gte(50);
+var ltC3s = C3S_LLCS_2020.lte(90);
+var Forests13 = gtC3S.and(ltC3s);
+//print(Forests13);
+//Map.addLayer(Forests13, {},"C3S 2020 Forests");
+
+var C3S_totalBiomass = totalBiomass.mask(Forests13);
+Map.addLayer(C3S_totalBiomass,visualization,'C3S_totalBiomass');
+
+var C3S_sumBiomass = ee.Image(C3S_totalBiomass).reduceRegions({ //generate sum of biomass carbon for country
+  collection: geom,
+  reducer: ee.Reducer.sum(),
+  scale: 300, //use data layer resolution
+  crs: 'EPSG:4326', // world wide crs 
+  tileScale:16 //set to 16 to avoid processing limitations
+});
+
+C3S_sumBiomass = C3S_sumBiomass.aggregate_array('sum').get(0);
+
+//Print biomass value for country
+print("Forest biomass 2020 - C3S: ",C3S_sumBiomass);
+
+
+C3S_LLCS_2019 = C3S_LLCS_2019.mask(populationdata1);
+
+var gtC3S19 = C3S_LLCS_2019.gte(50);
+var ltC3s19 = C3S_LLCS_2019.lte(90);
+var Forests13_2019 = gtC3S19.and(ltC3s19);
+//print(Forests13);
+//Map.addLayer(Forests13_2019, {},"C3S 2019 Forests");
+
+var C3S_totalBiomass19 = totalBiomass.mask(Forests13_2019);
+Map.addLayer(C3S_totalBiomass19,visualization,'C3S_totalBiomass_2019');
+
+var C3S_sumBiomass19 = ee.Image(C3S_totalBiomass19).reduceRegions({ //generate sum of biomass carbon for country
+  collection: geom,
+  reducer: ee.Reducer.sum(),
+  scale: 300, //use data layer resolution
+  crs: 'EPSG:4326', // world wide crs 
+  tileScale:16 //set to 16 to avoid processing limitations
+});
+
+C3S_sumBiomass19 = C3S_sumBiomass19.aggregate_array('sum').get(0);
+
+//Print biomass value for country
+print("Forest biomass 2019 - C3S: ",C3S_sumBiomass19);
+
+
+//-----------------------------------------------------------------------------------------//
+
+var GLAD = ee.Image("projects/glad/GLCLU2020/Forest_type");
+//print(GLAD);
+GLAD = GLAD.mask(populationdata1);
+var visualizationg = {
+  min: 0,
+  max: 4,
+  palette: ['24126c', '659200', 'ffd966','FF6600','FF0000']
+};
+//Map.addLayer(GLAD, visualizationg,'GLAD');
+
+var Forests14 = (GLAD.eq(1)).or(GLAD.eq(3));
+//Map.addLayer(Forests14, visualizationg,'GLAD forests');
+
+var GLAD_totalBiomass = totalBiomass.mask(Forests14);
+Map.addLayer(GLAD_totalBiomass,visualization,'GLAD_totalBiomass');
+
+var GLAD_sumBiomass = ee.Image(GLAD_totalBiomass).reduceRegions({ //generate sum of biomass carbon for country
+  collection: geom,
+  reducer: ee.Reducer.sum(),
+  scale: 300, //use data layer resolution
+  crs: 'EPSG:4326', // world wide crs 
+  tileScale:16 //set to 16 to avoid processing limitations
+});
+
+GLAD_sumBiomass = GLAD_sumBiomass.aggregate_array('sum').get(0);
+
+//Print biomass value for country
+print("Forest biomass 2020 - GLAD: ",GLAD_sumBiomass);
+
+
+
+//-----------------------------------------------------------------------------------------//
+
+
+//Forests1: CGLC 2019
+//Forests2: MODIS LC1 2019
+////Forests3: MODIS LC2 2019
+////Forests4: MODIS LC3 2019
+////Forests5: MODIS LC4 2019
+////Forests6: MODIS LC5 2019
+////Forests7: MODIS FAO LC1 2019
+//Forests8: MODIS FAO LC2 2019
+////Forests9: MODIS FAO LC3 2019
+//Forests10: ESRI LC 2020
+//Forests11: ESA WorldCover 2020
+//Forests12: PALSAR 2017
+//Forests13: C3S-LCCS 2020
+//Forests14: GLAD LULCC
+
+var worldGeom = 
+      ee.Geometry.Polygon(
+        [[[-180, 85],
+          [-180, -60],
+          [180, -60],
+          [180, 85]]], null, false);
+          
+
+var singleBandVis8 = {
+  min: 1,
+  max: 8,
+  palette: ['#8B0000','#FF0000','#FF8C00', '#FFFF00','#32CD32','#006400']
+};
+var sumForests = Forests.add(Forests2).add(Forests7).add(Forests10).add(Forests11).add(Forests12).add(Forests13).add(Forests14).selfMask();
+Map.addLayer(sumForests,singleBandVis8,'sumForests');
+//Export forest extent data:
+Export.image.toDrive({
+  image: sumForests,
+  description:'Kenya_SpatialAgreementForests',
+  folder: "GEE_Folder",
+  scale:300,
+  maxPixels:1e13,
+  region: geom,
+  skipEmptyTiles:true,
+  fileFormat: 'GeoTIFF'
+});
+//Export aboveground biomass
+Export.image.toDrive({
+  image: AGB.mask(populationdata1),
+  description:'Kenya_AGB_2010',
+  folder: "GEE_Folder",
+  scale:300,
+  maxPixels:1e13,
+  region: geom,
+  skipEmptyTiles:true,
+  fileFormat: 'GeoTIFF'
+});
+//Export belowground biomass
+Export.image.toDrive({
+  image: BGB.mask(populationdata1),
+  description:'Kenya_BGB_2010',
+  folder: "GEE_Folder",
+  scale:300,
+  maxPixels:1e13,
+  region: geom,
+  skipEmptyTiles:true,
+  fileFormat: 'GeoTIFF'
+});
+//Export total biomass
+Export.image.toDrive({
+  image: totalBiomass.mask(populationdata1),
+  description:'Kenya_totalBiomass_2010',
+  folder: "GEE_Folder",
+  scale:300,
+  maxPixels:1e13,
+  region: geom,
+  skipEmptyTiles:true,
+  fileFormat: 'GeoTIFF'
+});
+//Export total biomass for each dataset
+Export.image.toDrive({
+  image: Copernicus_totalBiomass,
+  description:'Kenya_Copernicus_totalBiomass_2019',
+  folder: "GEE_Folder",
+  scale:300,
+  maxPixels:1e13,
+  region: geom,
+  skipEmptyTiles:true,
+  fileFormat: 'GeoTIFF'
+});
+
+Export.image.toDrive({
+  image: MODIS_IGBP_totalBiomass,
+  description:'Kenya_MODIS_IGBP_totalBiomass_2019',
+  folder: "GEE_Folder",
+  scale:300,
+  maxPixels:1e13,
+  region: geom,
+  skipEmptyTiles:true,
+  fileFormat: 'GeoTIFF'
+});
+
+Export.image.toDrive({
+  image: MODIS_FAO_totalBiomass,
+  description:'Kenya_MODIS_FAO1_totalBiomass_2019',
+  folder: "GEE_Folder",
+  scale:300,
+  maxPixels:1e13,
+  region: geom,
+  skipEmptyTiles:true,
+  fileFormat: 'GeoTIFF'
+});
+
+Export.image.toDrive({
+  image: ESRI_totalBiomass_ts,
+  description:'Kenya_ESRI_totalBiomass_2019',
+  folder: "GEE_Folder",
+  scale:300,
+  maxPixels:1e13,
+  region: geom,
+  skipEmptyTiles:true,
+  fileFormat: 'GeoTIFF'
+});
+
+Export.image.toDrive({
+  image: ESA_WC_totalBiomass,
+  description:'Kenya_ESA_WC_totalBiomass_2020',
+  folder: "GEE_Folder",
+  scale:300,
+  maxPixels:1e13,
+  region: geom,
+  skipEmptyTiles:true,
+  fileFormat: 'GeoTIFF'
+});
+
+Export.image.toDrive({
+  image: FNF_totalBiomass,
+  description:'Kenya_FNF_totalBiomass_2019',
+  folder: "GEE_Folder",
+  scale:300,
+  maxPixels:1e13,
+  region: geom,
+  skipEmptyTiles:true,
+  fileFormat: 'GeoTIFF'
+});
+
+Export.image.toDrive({
+  image: C3S_totalBiomass19,
+  description:'Kenya_C3S_totalBiomass_2019',
+  folder: "GEE_Folder",
+  scale:300,
+  maxPixels:1e13,
+  region: geom,
+  skipEmptyTiles:true,
+  fileFormat: 'GeoTIFF'
+});
+
+Export.image.toDrive({
+  image: GLAD_totalBiomass,
+  description:'Kenya_GLAD_totalBiomass_2020',
+  folder: "GEE_Folder",
+  scale:300,
+  maxPixels:1e13,
+  region: geom,
+  skipEmptyTiles:true,
+  fileFormat: 'GeoTIFF'
+});
