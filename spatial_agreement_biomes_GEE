@@ -1,0 +1,277 @@
+//Global Forest Cover and Forest Cover Change Datasets
+//Code: Globally map agreement between datasets for the different biomes; Generates data for Figure 3 and Table S2
+//Citation: [cite]
+//Written by: Sarah Castle
+
+//-----------------------------------------------------------------------------------------//
+//Select number of datasets that should be in agreement for your biome analysis
+//num = 8 indicates that the analysis is run to find the forest area where all 8 datasets are in agreement for area defined as forest for each biome
+//num = 1 indicates that the analysis is run to find the forest area where at least one dataset defines an area as forests for each biome
+//num = 2..7 indicates that the analysis is run to find the forest area where at least 2..at least 7 datasets are in agreement for area defined as forest for each biome
+var num = 8;
+
+
+//Copernicus global land cover
+//2015-2019
+//100 m
+var dataset1 = ee.Image("COPERNICUS/Landcover/100m/Proba-V-C3/Global/2019")
+.select('discrete_classification');
+
+//Identify forest areas
+var gtForests = dataset1.gt(110); 
+var ltForests = dataset1.lt(199); 
+var Forests = ltForests.and(gtForests);
+//Map.addLayer(Forests.selfMask(),{palette:['#228B22']},'Copernicus Forests');
+//print(Forests);
+
+
+//-----------------------------------------------------------------------------------------//
+
+//MODIS Land Cover Type
+//2001-2020
+//500 m
+//**LC_Type 1
+var dataset = ee.ImageCollection('MODIS/006/MCD12Q1');
+var igbpLandCover = dataset.select('LC_Type1').filterDate('2019-01-01', '2019-12-31');
+
+var Forests2 = igbpLandCover.first().lt(6); //Excludes savannahs 
+//Map.addLayer(Forests2.selfMask(),{palette:['#228B22']},'MODIS IGBP Forests');
+
+
+//-------------------
+//**LC_Prop 1 FAO
+var dataset = ee.ImageCollection('MODIS/006/MCD12Q1');
+var FAOLandUse = dataset.select('LC_Prop1').filterDate('2019-01-01', '2019-12-31');
+
+
+var gtFAO = FAOLandUse.first().gt(10);
+var ltFAO = FAOLandUse.first().lt(23);
+var Forests7 = gtFAO.and(ltFAO);
+//Map.addLayer(Forests7.selfMask(),{palette:['#228B22']},'MODIS FAO Forests Land Cover');
+
+//-----------------------------------------------------------------------------------------//
+//ESRI 2020 Land Cover
+
+var esri_lulc2020= ee.ImageCollection("projects/sat-io/open-datasets/landcover/ESRI_Global-LULC_10m").mosaic();
+var Forests10 = esri_lulc2020.eq(2);
+
+var esri_lulc_ts= ee.ImageCollection("projects/sat-io/open-datasets/landcover/ESRI_Global-LULC_10m_TS").filterDate('2019-01-01', '2019-12-31').mosaic();
+var Forests10_ts = esri_lulc_ts.eq(2);
+//Map.addLayer(Forests10.selfMask(),{palette:['#228B22']}, 'ESRI Forests');
+
+
+//-----------------------------------------------------------------------------------------//
+
+//ESA WorldCover 2020
+
+var ESA_WC = ee.ImageCollection("ESA/WorldCover/v100").first().select('Map');
+
+
+var Forests11 = ESA_WC.eq(10);
+//Map.addLayer(Forests11.selfMask(),{palette:['#228B22']}, "ESA WorldCover Forests");
+
+//-----------------------------------------------------------------------------------------//
+//PALSAR/PALSAR-2 Forest/Non-forest
+var palsar = ee.ImageCollection('JAXA/ALOS/PALSAR/YEARLY/FNF4')
+                  .filterDate('2018-01-01', '2019-12-31');
+var forestNonForest = palsar.select('fnf');
+
+var Forests12 = palsar.first().lte(2);
+//Map.addLayer(Forests12.selfMask(),{palette:['#228B22']}, 'PALSAR Forest/Non-Forest');
+
+
+//-----------------------------------------------------------------------------------------//
+
+//Copernicus Climate Change Service global Land Cover (C3S-LC)
+var C3S_LLCS_2019 = ee.Image("users/saraheb3/C3S-LCCS-300m-2019"),
+    C3S_LLCS_2020 = ee.Image("users/saraheb3/C3S-LCCS-300m-2020");
+//Map.addLayer(C3S_LLCS_2020, {},"C3S 2020");
+//print(C3S_LLCS_2020);
+var gtC3S = C3S_LLCS_2020.gte(50);
+var ltC3s = C3S_LLCS_2020.lte(90);
+var Forests13 = gtC3S.and(ltC3s);
+//print(Forests13);
+//Map.addLayer(Forests13, {},"C3S 2020 Forests");
+
+var gtC3S19 = C3S_LLCS_2019.gte(50);
+var ltC3s19 = C3S_LLCS_2019.lte(90);
+var Forests13_2019 = gtC3S19.and(ltC3s19);
+
+//-----------------------------------------------------------------------------------------//
+//GLAD LULCC
+var GLAD = ee.Image("projects/glad/GLCLU2020/Forest_type");
+print(GLAD);
+
+var visualizationg = {
+  min: 0,
+  max: 4,
+  palette: ['24126c', '659200', 'ffd966','FF6600','FF0000']
+};
+//Map.addLayer(GLAD, visualizationg);
+
+var Forests14 = (GLAD.eq(1)).or(GLAD.eq(3));
+Map.addLayer(Forests14, {palette:['#18b3f5']}, 'GLAD');
+
+//-----------------------------------------------------------------------------------------//
+//-----------------------------------------------------------------------------------------//
+//-----------------------------------------------------------------------------------------//
+
+var ecoRegions = ee.FeatureCollection("RESOLVE/ECOREGIONS/2017");
+
+var ecoRegions = ecoRegions.map(function(f) {
+  var color = f.get('COLOR_BIO');
+  return f.set({style: {color: color, width: 0}});
+});
+
+// use style property to color shapes
+var imageRGB = ecoRegions.style({styleProperty: 'style'});
+
+//Map.addLayer(imageRGB, {}, 'RESOLVE/ECOREGIONS/2017');
+
+var biomemask = ecoRegions.reduceToImage({properties: ['BIOME_NUM'], reducer: ee.Reducer.mode()});//.selfMask();
+var visualization = {
+  min: 0,
+  max: 14,
+  palette: ['24126c', '1fff4f', 'd4ff50']
+};
+//Map.addLayer(biomemask, visualization, 'Biome');
+//print(biomemask);
+
+var singleBandVis6 = {
+  min: 1,
+  max: 6,
+  palette: ['#8B0000','#FF0000','#FF8C00', '#FFFF00','#32CD32','#006400']
+};
+var sumForests = Forests.add(Forests2).add(Forests7).add(Forests10).add(Forests11).add(Forests12).add(Forests13).add(Forests14).selfMask();
+//Map.addLayer(sumForests,singleBandVis6,'sumForests_onlyIGBP-FAOLLC1');
+
+//define countries based on WorldPop
+var populationdata = ee.ImageCollection("WorldPop/GP/100m/pop")
+  .filter(ee.Filter.equals('year', 2019)) //Select year for analysis. Here, 2019 for latest data.
+  .select('population');
+
+var visualization = {
+  min: 0.0,
+  max: 50.0,
+  palette: ['24126c', '1fff4f', 'd4ff50']
+};
+
+//generate runnable geometry that contains all of Russia to use instead of WorldPop Russia polygon.
+var geometryRUS2 = ee.Geometry.Polygon(
+        [[[-169.50122089779603, 66.04510542390898],
+          [-170.38012714779603, 68.80826069345866],
+          [138.10371158826706, 81.01468385631397],
+          [41.07246158826705, 70.44427750147837],
+          [28.064649088267053, 70.62002830550718],
+          [29.119336588267053, 40.730885910467336],
+          [51.26777408826705, 40.385600726265146],
+          [137.75214908826706, 39.712814250659214],
+          [167.98652408826706, 52.6475019953468],
+          [-172.0057606728738, 64.32137604550174]]]),
+    geometryRUS = 
+    
+    ee.Geometry.Polygon(
+        [[[26.645157744418064, 81.99448593123078],
+          [26.645157744418064, 40.96658178754772],
+          [190.82484524441804, 40.96658178754772],
+          [190.82484524441804, 81.99448593123078]]], null, false);
+
+var country = populationdata.aggregate_array('country'); //get list of country ISO3 codes
+
+var pixelArea = ee.Image.pixelArea();
+
+//Forests1: CGLC 2019
+//Forests2: MODIS LC1 2019
+////Forests3: MODIS LC2 2019
+////Forests4: MODIS LC3 2019
+////Forests5: MODIS LC4 2019
+////Forests6: MODIS LC5 2019
+////Forests7: MODIS FAO LC1 2019
+//Forests8: MODIS FAO LC2 2019
+////Forests9: MODIS FAO LC3 2019
+//Forests10: ESRI LC 2020
+//Forests11: ESA WorldCover 2020
+//Forests12: PALSAR 2017
+//Forests13: C3S-LCCS 2020
+//Forests14: GLAD LULCC
+var agreement1 = sumForests.gte(num);
+//Map.addLayer(agreement1,{palette:["#FFDA00"]},'Agree forests');
+
+for (var i = 1; i < 15; i++) {
+
+  var biomei = ee.Image(biomemask.eq(i)).selfMask();
+  var agreement = sumForests.gte(2);
+  var biomei = agreement.mask(biomei).selfMask();
+  var biomeiCo = populationdata.map(function (img){
+    var imgTemp = img.add(1);
+    var biomeiCo = biomei.mask(imgTemp).selfMask();
+    biomeiCo = biomeiCo.set('country',(img.get('country')));
+    biomeiCo = biomeiCo.set('system:footprint',(img.get('system:footprint')));
+    return biomeiCo;
+  });
+  //print('biomeiCo',biomeiCo);
+  //Map.addLayer(biomeiCo,visualization,'biomeiCo');
+  
+  for (var j=0 ; j<249; j = j + 50){{
+    if (j<200){
+      var k = 50;  
+    }
+    else{
+      k = 49;
+    }
+    var country_list = ee.List([]); //initate empty list to store country level data
+    var listOfImages = ee.List([]);
+    
+    for (var l = 0; l < k; l++) { //for each country
+      
+      var CountryTemp = biomeiCo.filter(ee.Filter.equals('country', country.get(l+j))); //get image for each country
+      //print("CountryTemp: ",CountryTemp);
+      //Map.addLayer(CountryTemp,{},'countryTemp'+(l+j));
+      var listOfImages = CountryTemp.toList(1); //convert to list for processing
+      //print("listOfImages: ", listOfImages);
+      
+      var biomeiCountry = listOfImages.map(function (img) {//function to generate sum of forest area in agreement using num threshold for each country
+        var geom = ee.Image(img).geometry();
+        if((l+j)==188){ // for Russia (i=188) need to set user-generated geometry since default Russia geometry too big to process. New geometry contains entire country.
+          geom = geometryRUS2; //use generated polygon for Russia analysis.
+        }else{
+          geom = ee.Image(img).geometry(); //all other default country geometries work as is.
+        }
+        var maskedMatchArea = pixelArea.updateMask(img);
+      
+        var matchSum = ee.Image(maskedMatchArea).reduceRegion({ //generate sum of forest area in agreement using num threshold for each country
+            geometry: geom,
+            reducer: ee.Reducer.sum(),
+            scale: 100, 
+            tileScale:16, //set to 16 to avoid processing limitations
+            maxPixels:1e13,
+            //bestEffort: true
+          });
+          
+          var squareMeters = matchSum.getNumber('area');
+          var squareKilometers = squareMeters.divide(1e6);
+          return [ee.Image(img).get('country'), squareKilometers];
+          
+      });
+      //print("biomeiCountry ",(l+j),biomeiCountry);
+      country_list = ee.List(country_list).add(biomeiCountry.get(0));
+      //print(country_list);
+    }
+    var country_list = ee.FeatureCollection(country_list //function to convert list to FeatureCollection for exporting.
+      .map(function(element){ 
+        return ee.Feature(null,{
+          //'scale':ee.List(element).get(0),
+          'country':ee.List(element).get(0),
+          'matchSum':ee.List(element).get(1)
+        }
+        )}));
+    //print(country_list); //print FeatureCollection of biome data
+    Export.table.toDrive({//export biome results to user's Google Drive in csv format
+        collection:country_list, 
+        folder: "GEE_Folder",
+        description:'Agreement-gte2-2019_biome'+i+'_country'+j,
+        fileFormat: 'csv'
+    });
+    } 
+  } 
+}
