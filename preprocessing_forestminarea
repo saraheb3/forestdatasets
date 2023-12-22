@@ -1,0 +1,86 @@
+//Global Forest Cover and Forest Cover Change Datasets
+//Code: For forest-proximate people in poverty analysis. Preprocesses ESRI Land Cover and ESA World Cover tree cover datasets to remove tree cover below a threshold area (any tree cover area less than 0.5 ha in size is removed). Generates GEE assets.
+//Citation: [cite]
+//Author: Sarah Castle
+
+//*****************************************************************************//
+//*****************************************************************************//
+
+var country = 'IND'; //country code //Select country of analysis using country code. Here, India. 
+//See https://www.worldpop.org/resources/docs/national_boundaries/global-input-population-data-summary.xlsx for country codes.
+
+var year = 2020; //Select year for analysis. Here, 2020.
+
+//Use the WorldPop administrative boundaries
+var worldPopIC = "WorldPop/GP/100m/pop"; //Select GEE WorldPop population data Image Collection path. 
+var populationdata = ee.ImageCollection(worldPopIC)
+  .filter(ee.Filter.equals('year', year)) //Select year for analysis. Here, 2019 for latest data.
+  .filter(ee.Filter.equals('country', country))
+  .select('population');//.mosaic();
+var populationdataimg = populationdata.reduce({reducer: ee.Reducer.median()});
+var populationdata1 = populationdataimg.add(1);
+//bounding geometry of selected country
+var geom = populationdata.geometry();
+
+//Import ESRI Land Cover data
+var esri_lulc_ts= ee.ImageCollection("projects/sat-io/open-datasets/landcover/ESRI_Global-LULC_10m_TS").filterDate(year+'-01-01', year+'-12-31').mosaic();
+esri_lulc_ts = esri_lulc_ts.mask(populationdata1);
+//ESRI tree cover class
+var Forests10_ts = esri_lulc_ts.eq(2);
+
+//Import ESA World Cover data
+var ESA_WC = ee.ImageCollection("ESA/WorldCover/v100").first().select('Map');
+ESA_WC = ESA_WC.mask(populationdata1);
+//ESA WC tree cover class
+var Forests11 = ESA_WC.eq(10);
+
+//Select which dataset you would like to process. Forests10_ts for ESRI-LC, Forests11 for ESA-WC
+var forests = Forests11;
+var assetdescription = 'IND_ESAWC_2020_Forests72m';//Choose name for exported GEE asset
+Map.addLayer(forests.selfMask(),{palette:['#228B22']}, 'Trees');
+
+
+//identify connected components
+var objectID = forests.connectedComponents({
+  connectedness: ee.Kernel.square(1),
+  maxSize: 1023
+});
+
+
+
+//add labels identifying the contigous areas
+var forLabels = forests.addBands(objectID.select('labels'));
+//create an image pixel areas to multiply the forest area by.
+var pixelArea = ee.Image.pixelArea();
+// Compute the number of pixels in each forest defined by the "labels" band.
+var forSize = forLabels.select('labels')
+.connectedPixelCount({
+  maxSize: 1024, eightConnected: true
+});
+//calculate the forest area
+var forArea = forSize.multiply(pixelArea);
+//Map.addLayer(forArea, {palette: ['24126c', '1fff4f', 'd4ff50']}, 'Forest Area');
+
+//define non forest areas as tree cover with area less than 0.5 ha (5000 sq meters)
+var nonforestAreas = forArea.lt(5000) 
+  .selfMask()
+  .rename('nonforAreas'); 
+  
+//Map.addLayer(nonforestAreas, {palette: ['24126c', '1fff4f', 'd4ff50']}, 'nonforestAreas');
+//to generate a map of forest areas, unmask the masked forest areas and set to value of 3. Nonforest areas have a value of 1.
+var ones = nonforestAreas.unmask(3);
+//get only forest areas (value=3) and mask out nonforest areas (value=1) to generate forest area image
+var forested = ones.gt(2).mask(forests) 
+  .selfMask()
+  .rename('forested');
+//Map.addLayer(ones, {palette: '1fff4f'}, 'ones');
+Map.addLayer(forested, {palette: 'd4ff50'}, 'forested');
+
+//Export new forest map to GEE asset. Import this asset into the forest-proximate people in poverty code. 
+Export.image.toAsset({
+  image: forested,
+  description: assetdescription,
+  scale:72,
+  maxPixels:1e13,
+  region: geom
+});
