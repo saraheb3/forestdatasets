@@ -1,23 +1,32 @@
-//Title: Forest Proximate People in Poverty - India - Code
+//Global Forest Cover and Forest Cover Change Datasets
+//Code: Forest Proximate People in Poverty for India; Generates Figure 5 and Table S4
+//Generates estimates of forest proximate people in poverty for a single country for each of the eight global forest datasets
+//Citation: [cite]
 //Author: Sarah Castle
 //Date: 12 December 2023
-//For forest-proximate people analysis and code this derived from, 
-//See FAO technical report: Citation: Newton, P., Castle, S.E., Kinzer, A.T., Miller, D.C., Oldekop, J.A., Linhares-Juvenal, T., Madrid, M., Pina, L. 2022. The number of forest- and tree-proximate people: a new methodology and global estimates. Rome, FAO. 
-//Generates estimates of forest proximate people in poverty for a single country for each of the eight global forest datasets
-//Used for creating Figure 5 and S4, Table S5
+  //For forest-proximate people analysis and code this derived from, 
+  //See FAO technical report: Citation: Newton, P., Castle, S.E., Kinzer, A.T., Miller, D.C., Oldekop, J.A., Linhares-Juvenal, T., Madrid, M., Pina, L. 2022. The number of forest- and tree-proximate people: a new methodology and global estimates. Rome, FAO. 
+
+
+//*****************************************************************************//
+//*****************************************************************************//
 
 //User defined input variables. Please select appropriate variables for current analysis here.
-//Current analysis settings are for estimating forest proximate people in poverty in the year 2007 for Pakistan. 
-  //Forest proximity is defined by people living in or within 5 kilometers (5000 meters) of land 
-  //classified as forest per the PALSAR Forest/Non-forest dataset. High density urban areas 
+//Current analysis settings are for estimating forest proximate people in poverty in the year 2017 for India. 
+  //Forest proximity is defined by people living in or within 1 kilometers (1000 meters) of land 
+  //classified as forest by each dataset. High density urban areas 
   //were excluded, where these urban areas were defined as contiguous areas with a total population 
   //of at least 50,000 people and comprised of pixels which met at least one of two criteria: either 
   //the pixel a) had at least 1,500 people per square km, or b) was classified as “built-up” land use 
   //by the MODIS dataset (where “built-up” was defined as land covered by buildings and other manmade structures).
-  //Gridded (1km *1 km ) estimate of poverty in Pakistan. Weblink that contains details of the methodology used to produce the data: 
-  //https://hub.worldpop.org/resources/docs/pdf/Poverty-mapping-report.pdf. 
+//Gridded relative wealth index in India using Chi et al. (2022) data found here: https://data.humdata.org/dataset/relative-wealth-index 
+  //To preprocess Chi et al. data using ArcGIS Pro and import to GEE follow these steps: 1. Import csv file with downloaded point data to ArcGIS Pro
+  //2. Run "XY Table to Point" tool to convert csv data to point data layer.
+  //3. Project point layer to "WGS_1984_Web_Mercator_Auxiliary_Sphere".
+  //4. Run "Point to Raster" tool with the projected point layer as "Input Features", "RWI" as the "Value Field", "Mean" as the "Cell assignment type",  and "2446" as the "Cellsize" 
+  //5. Export resulting raster layer as a ""TIFF"" file, which can then be imported into Google Earth Engine as a GeoTIFF. "
 
-var country = 'IND'; //country code //Select country of analysis using country code. Here, Pakistan. 
+var country = 'IND'; //country code //Select country of analysis using country code. Here, India. 
 //See https://www.worldpop.org/resources/docs/national_boundaries/global-input-population-data-summary.xlsx for country codes.
 
 var year = 2017; //Select year for analysis. Here, 2019 for latest data.
