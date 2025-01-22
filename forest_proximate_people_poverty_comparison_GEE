@@ -1,7 +1,6 @@
 //Global Forest Cover and Forest Cover Change Datasets
 //Code: Forest Proximate People in Poverty for India; Generates Figure 5 and Table S4
 //Generates estimates of forest proximate people in poverty for a single country for each of the eight global forest datasets
-//Citation: [cite]
 //Author: Sarah Castle
 //Date: 12 December 2023
   //For forest-proximate people analysis and code this derived from, 
@@ -253,7 +252,7 @@ var pixelArea = ee.Image.pixelArea().mask(populationdata1);
 var CoAreaSum = ee.Image(pixelArea).reduceRegion({ //generate country area
   geometry: geom,
   reducer: ee.Reducer.sum(),
-  scale: 100, //use data layer resolution (~93m) 
+  scale: 100, 
   tileScale:16, //set to 16 to avoid processing limitations
   maxPixels:1e13,
   //bestEffort: true
