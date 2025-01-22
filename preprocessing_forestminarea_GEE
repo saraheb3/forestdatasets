@@ -1,6 +1,5 @@
 //Global Forest Cover and Forest Cover Change Datasets
 //Code: For forest-proximate people in poverty analysis. Preprocesses ESRI Land Cover and ESA World Cover tree cover datasets to remove tree cover below a threshold area (any tree cover area less than 0.5 ha in size is removed). Generates GEE assets.
-//Citation: [cite]
 //Author: Sarah Castle
 
 //*****************************************************************************//
