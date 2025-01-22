@@ -1,6 +1,5 @@
 //Global Forest Cover and Forest Cover Change Datasets
 //Code: Globally map agreement between datasets; Generates Figure 1 and S1
-//Citation: [cite]
 //Written by: Sarah Castle
 
 //*****************************************************************************//
@@ -20,7 +19,7 @@ var dataset1 = ee.Image("COPERNICUS/Landcover/100m/Proba-V-C3/Global/2019")
 //Map.addLayer(dataset1, {}, "Copernicus Land Cover");
 //print('Copernicus',dataset1);
 
-//Identify forest and non-forest areas to exclude forested areas from the TPP analysis
+//Identify forest and non-forest areas to exclude forested areas from the analysis
 var gtForests = dataset1.gt(110); 
 var ltForests = dataset1.lt(199); 
 var Forests = ltForests.and(gtForests);
@@ -50,7 +49,7 @@ var igbpLandCoverVis = {
 };
 //Map.addLayer(igbpLandCover, igbpLandCoverVis, 'IGBP Land Cover');
 //print('MODIS LC1',igbpLandCover);
-//Identify forest and non-forest areas to exclude forested areas from the TPP analysis
+//Identify forest and non-forest areas to exclude forested areas from the analysis
 var Forests2 = igbpLandCover.first().lt(6); //Excludes savannahs 
 //Uncomment following line to view map of forested areas
 //Map.addLayer(Forests2.selfMask(),{palette:['#228B22']},'MODIS IGBP Forests');
@@ -400,7 +399,6 @@ var singleBandVis14 = {
 
 var sumForests = Forests.add(Forests2).add(Forests3).add(Forests4).add(Forests5).add(Forests6).add(Forests7).add(Forests8).add(Forests9).add(Forests10).add(Forests11).add(Forests12).add(Forests13).add(Forests14).selfMask();
 //Map.addLayer(sumForests,singleBandVis14,'sumForests_noSavannah');
-//Removed FAO LLC3 Hydrology .add(Forests9)
 
 
 var worldGeom = 
@@ -467,11 +465,15 @@ var forestArea1 = pixelArea.updateMask(sumForestsc);
 var sum1 = ee.Image(forestArea1).reduceRegion({ 
     geometry: worldGeom,
     reducer: ee.Reducer.sum(),
-    scale: 100, //use data layer resolution (~93m) 
+    scale: 100,  
     tileScale:16, //set to 16 to avoid processing limitations
     maxPixels:1e13,
     //bestEffort: true
 });
+//Note on the scale value: The pixel-level analyses were conducted using a 100-meter scale with weighted sum reducers, 
+//which estimates the proportion of classified forest within each pixel. We tested the sensitivity of this scale value 
+//and found that between setting the scale to 10-meter (computationally much more intensive) and 100-meter, there was 
+//less than a 0.01% difference in the results.
 
 var squareMeters1 = sum1.getNumber('area');
 var squareKilometers1 = squareMeters1.divide(1e6);
@@ -518,6 +520,10 @@ var sum1_sav = ee.Image(forestArea1_sav).reduceRegion({
     maxPixels:1e13,
     //bestEffort: true
 });
+//Note on the scale value: The pixel-level analyses were conducted using a 100-meter scale with weighted sum reducers, 
+//which estimates the proportion of classified forest within each pixel. We tested the sensitivity of this scale value 
+//and found that between setting the scale to 10-meter (computationally much more intensive) and 100-meter, there was 
+//less than a 0.01% difference in the results.
 
 var squareMeters1 = sum1_sav.getNumber('area');
 var squareKilometers1 = squareMeters1.divide(1e6);
