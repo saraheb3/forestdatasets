@@ -1,6 +1,5 @@
 //Global Forest Cover and Forest Cover Change Datasets
 //Code: Estimates biomass carbon stored in forests for different global forest cover datasets for a specific dataset
-//Citation: [cite]
 //Author: Sarah Castle
 
 
@@ -279,14 +278,12 @@ Map.addLayer(FNF_totalBiomass,visualization,'FNF_totalBiomass');
 var FNF_sumBiomass = ee.Image(FNF_totalBiomass).reduceRegions({ //generate sum of biomass carbon for country
   collection: geom,
   reducer: ee.Reducer.sum(),
-  scale: 300, //use data layer resolution (~93m) 
+  scale: 300, 
   crs: 'EPSG:4326', // world wide crs 
   tileScale:16 //set to 16 to avoid processing limitations
 });
 
 FNF_sumBiomass = FNF_sumBiomass.aggregate_array('sum').get(0);
-
-//Print FPP value for country
 print("Forest biomass "+year+" - FNF: ",FNF_sumBiomass);
 */
 //-----------------------------------------------------------------------------------------//
