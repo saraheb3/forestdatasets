@@ -1,7 +1,6 @@
 //Global Forest Cover and Forest Cover Change Datasets
 //Code: Compares estimates of forest cover change between Hansen and Vancutsem change datasets within IUCN Red List Species Range; 
 //Generates Figure 6 and Supplemental Table S9-S10 and Figure S6 
-//Citation: [cite]
 //Author: Sarah Castle
 
 //Import Vancutsem maps from separate script
@@ -237,7 +236,7 @@ var agree15_16area = pixelArea.updateMask(agree15_16);
 var sumagree15_16area = ee.Image(agree15_16area).reduceRegion({ 
     geometry: geom,
     reducer: ee.Reducer.sum(),
-    scale: 30, //use data layer resolution (~93m) 
+    scale: 30, 
     tileScale:16, //set to 16 to avoid processing limitations
     maxPixels:1e13,
     //bestEffort: true
@@ -254,7 +253,7 @@ var agree16_17area = pixelArea.updateMask(agree16_17);
 var sumagree16_17area = ee.Image(agree16_17area).reduceRegion({ 
     geometry: geom,
     reducer: ee.Reducer.sum(),
-    scale: 30, //use data layer resolution (~93m) 
+    scale: 30,
     tileScale:16, //set to 16 to avoid processing limitations
     maxPixels:1e13,
     //bestEffort: true
@@ -271,7 +270,7 @@ var agree17_18area = pixelArea.updateMask(agree17_18);
 var sumagree17_18area = ee.Image(agree17_18area).reduceRegion({ 
     geometry: geom,
     reducer: ee.Reducer.sum(),
-    scale: 30, //use data layer resolution (~93m) 
+    scale: 30,
     tileScale:16, //set to 16 to avoid processing limitations
     maxPixels:1e13,
     //bestEffort: true
@@ -288,7 +287,7 @@ var agree18_19area = pixelArea.updateMask(agree18_19);
 var sumagree18_19area = ee.Image(agree18_19area).reduceRegion({ 
     geometry: geom,
     reducer: ee.Reducer.sum(),
-    scale: 30, //use data layer resolution (~93m) 
+    scale: 30,  
     tileScale:16, //set to 16 to avoid processing limitations
     maxPixels:1e13,
     //bestEffort: true
@@ -305,7 +304,7 @@ var agree19_20area = pixelArea.updateMask(agree19_20);
 var sumagree19_20area = ee.Image(agree19_20area).reduceRegion({ 
     geometry: geom,
     reducer: ee.Reducer.sum(),
-    scale: 30, //use data layer resolution (~93m) 
+    scale: 30,  
     tileScale:16, //set to 16 to avoid processing limitations
     maxPixels:1e13,
     //bestEffort: true
@@ -322,7 +321,7 @@ var agree20_21area = pixelArea.updateMask(agree20_21);
 var sumagree20_21area = ee.Image(agree20_21area).reduceRegion({ 
     geometry: geom,
     reducer: ee.Reducer.sum(),
-    scale: 30, //use data layer resolution (~93m) 
+    scale: 30,
     tileScale:16, //set to 16 to avoid processing limitations
     maxPixels:1e13,
     //bestEffort: true
@@ -384,7 +383,7 @@ var V1area = pixelArea.updateMask(vagree15_16);
 var sumV1area = ee.Image(V1area).reduceRegion({ 
     geometry: geom,
     reducer: ee.Reducer.sum(),
-    scale: 30, //use data layer resolution (~93m) 
+    scale: 30, 
     tileScale:16, //set to 16 to avoid processing limitations
     maxPixels:1e13,
     //bestEffort: true
@@ -398,7 +397,7 @@ var H1area = pixelArea.updateMask(hagree15_16);
 var sumH1area = ee.Image(H1area).reduceRegion({ 
     geometry: geom,
     reducer: ee.Reducer.sum(),
-    scale: 30, //use data layer resolution (~93m) 
+    scale: 30,  
     tileScale:16, //set to 16 to avoid processing limitations
     maxPixels:1e13,
     //bestEffort: true
@@ -413,7 +412,7 @@ var V2area = pixelArea.updateMask(vagree16_17);
 var sumV2area = ee.Image(V2area).reduceRegion({ 
     geometry: geom,
     reducer: ee.Reducer.sum(),
-    scale: 30, //use data layer resolution (~93m) 
+    scale: 30, 
     tileScale:16, //set to 16 to avoid processing limitations
     maxPixels:1e13,
     //bestEffort: true
@@ -427,7 +426,7 @@ var H2area = pixelArea.updateMask(hagree16_17);
 var sumH2area = ee.Image(H2area).reduceRegion({ 
     geometry: geom,
     reducer: ee.Reducer.sum(),
-    scale: 30, //use data layer resolution (~93m) 
+    scale: 30, 
     tileScale:16, //set to 16 to avoid processing limitations
     maxPixels:1e13,
     //bestEffort: true
@@ -441,7 +440,7 @@ var V3area = pixelArea.updateMask(vagree17_18);
 var sumV3area = ee.Image(V3area).reduceRegion({ 
     geometry: geom,
     reducer: ee.Reducer.sum(),
-    scale: 30, //use data layer resolution (~93m) 
+    scale: 30, 
     tileScale:16, //set to 16 to avoid processing limitations
     maxPixels:1e13,
     //bestEffort: true
@@ -455,7 +454,7 @@ var H3area = pixelArea.updateMask(hagree17_18);
 var sumH3area = ee.Image(H3area).reduceRegion({ 
     geometry: geom,
     reducer: ee.Reducer.sum(),
-    scale: 30, //use data layer resolution (~93m) 
+    scale: 30, 
     tileScale:16, //set to 16 to avoid processing limitations
     maxPixels:1e13,
     //bestEffort: true
@@ -469,7 +468,7 @@ var V4area = pixelArea.updateMask(vagree18_19);
 var sumV4area = ee.Image(V4area).reduceRegion({ 
     geometry: geom,
     reducer: ee.Reducer.sum(),
-    scale: 30, //use data layer resolution (~93m) 
+    scale: 30, 
     tileScale:16, //set to 16 to avoid processing limitations
     maxPixels:1e13,
     //bestEffort: true
@@ -483,7 +482,7 @@ var H4area = pixelArea.updateMask(hagree18_19);
 var sumH4area = ee.Image(H4area).reduceRegion({ 
     geometry: geom,
     reducer: ee.Reducer.sum(),
-    scale: 30, //use data layer resolution (~93m) 
+    scale: 30, 
     tileScale:16, //set to 16 to avoid processing limitations
     maxPixels:1e13,
     //bestEffort: true
@@ -497,7 +496,7 @@ var V5area = pixelArea.updateMask(vagree19_20);
 var sumV5area = ee.Image(V5area).reduceRegion({ 
     geometry: geom,
     reducer: ee.Reducer.sum(),
-    scale: 30, //use data layer resolution (~93m) 
+    scale: 30, 
     tileScale:16, //set to 16 to avoid processing limitations
     maxPixels:1e13,
     //bestEffort: true
@@ -511,7 +510,7 @@ var H5area = pixelArea.updateMask(hagree19_20);
 var sumH5area = ee.Image(H5area).reduceRegion({ 
     geometry: geom,
     reducer: ee.Reducer.sum(),
-    scale: 30, //use data layer resolution (~93m) 
+    scale: 30, 
     tileScale:16, //set to 16 to avoid processing limitations
     maxPixels:1e13,
     //bestEffort: true
@@ -525,7 +524,7 @@ var V6area = pixelArea.updateMask(vagree20_21);
 var sumV6area = ee.Image(V6area).reduceRegion({ 
     geometry: geom,
     reducer: ee.Reducer.sum(),
-    scale: 30, //use data layer resolution (~93m) 
+    scale: 30, 
     tileScale:16, //set to 16 to avoid processing limitations
     maxPixels:1e13,
     //bestEffort: true
@@ -539,7 +538,7 @@ var H6area = pixelArea.updateMask(hagree20_21);
 var sumH6area = ee.Image(H6area).reduceRegion({ 
     geometry: geom,
     reducer: ee.Reducer.sum(),
-    scale: 30, //use data layer resolution (~93m) 
+    scale: 30, 
     tileScale:16, //set to 16 to avoid processing limitations
     maxPixels:1e13,
     //bestEffort: true
@@ -575,7 +574,6 @@ var hfeatureCollection = ee.FeatureCollection(hlist.map(function(element){
 
 //print(hfeatureCollection);
 
-//Export.table.toDrive(ee.Element(chartArray));
 Export.table.toDrive({
   collection: hfeatureCollection,
   folder: 'GEE_Folder',
